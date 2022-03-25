@@ -301,6 +301,80 @@
         }
       }
     }
+  },
+  "add_confounder_1": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 1000,
+      "gauss": {
+        "class_0": [
+          [
+            0,
+            10
+          ],
+          [
+            -30,
+            10
+          ],
+          [
+            0,
+            100
+          ]
+        ],
+        "class_1": [
+          [
+            0,
+            10
+          ],
+          [
+            30,
+            10
+          ],
+          [
+            0,
+            100
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise1": {
+          "noise_rate": 0,
+          "noise_factor": 0,
+          "classes": []
+        }
+      },
+      "add_confounder": {
+        "confounder_0": {
+          "distribution": "gauss",
+          "mean": -200,
+          "std": 20,
+          "classes": [
+            0
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        },
+        "confounder_1": {
+          "distribution": "gauss",
+          "mean": 200,
+          "std": 20,
+          "classes": [
+            1
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        }
+      }
+    }
   }
 }
 
