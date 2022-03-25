@@ -1,0 +1,257 @@
+{
+  "param_0": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 1000,
+      "gauss": {
+        "class_0": [
+          [
+            -50,
+            10
+          ],
+          [
+            -100,
+            10
+          ],
+          [
+            -200,
+            50
+          ]
+        ],
+        "class_1": [
+          [
+            50,
+            10
+          ],
+          [
+            100,
+            10
+          ],
+          [
+            0,
+            50
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise_rate": 0,
+        "noise_factor": 0,
+        "classes": [
+          0,
+          1
+        ]
+      },
+      "add_confounder": {
+        "confounder_0": {
+          "distribution": "gauss",
+          "mean": 0,
+          "std": 0,
+          "classes": [],
+          "features": []
+        }
+      }
+    }
+  },
+  "param_1": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 1000,
+      "gauss": {
+        "class_0": [
+          [
+            -50,
+            10
+          ],
+          [
+            -100,
+            10
+          ],
+          [
+            -200,
+            50
+          ]
+        ],
+        "class_1": [
+          [
+            50,
+            10
+          ],
+          [
+            100,
+            10
+          ],
+          [
+            0,
+            50
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise_rate": 0.7,
+        "noise_factor": 1000,
+        "classes": [
+          1
+        ]
+      },
+      "add_confounder": {
+        "confounder_0": {
+          "distribution": "gauss",
+          "mean": 0,
+          "std": 0,
+          "classes": [],
+          "features": []
+        }
+      }
+    }
+  },
+  "param_2": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 1000,
+      "gauss": {
+        "class_0": [
+          [
+            -50,
+            10
+          ],
+          [
+            -100,
+            10
+          ],
+          [
+            -200,
+            50
+          ]
+        ],
+        "class_1": [
+          [
+            50,
+            10
+          ],
+          [
+            100,
+            10
+          ],
+          [
+            0,
+            50
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise_rate": 0,
+        "noise_factor": 0,
+        "classes": []
+      },
+      "add_confounder": {
+        "confounder_0": {
+          "distribution": "gauss",
+          "mean": 0,
+          "std": 20,
+          "classes": [
+            0
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        }
+      }
+    }
+  },
+  "param_3": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 1000,
+      "gauss": {
+        "class_0": [
+          [
+            -50,
+            10
+          ],
+          [
+            -100,
+            10
+          ],
+          [
+            -200,
+            50
+          ]
+        ],
+        "class_1": [
+          [
+            50,
+            10
+          ],
+          [
+            100,
+            10
+          ],
+          [
+            0,
+            50
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise_rate": 0,
+        "noise_factor": 0,
+        "classes": []
+      },
+      "add_confounder": {
+        "confounder_0": {
+          "distribution": "gauss",
+          "mean": 50,
+          "std": 10,
+          "classes": [
+            0
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        },
+        "confounder_1": {
+          "distribution": "gauss",
+          "mean": 100,
+          "std": 10,
+          "classes": [
+            0
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        },
+        "confounder_2": {
+          "distribution": "gauss",
+          "mean": -300,
+          "std": 10,
+          "classes": [
+            0
+          ],
+          "features": [
+            0,
+            1,
+            2
+          ]
+        }
+      }
+    }
+  }
+}
