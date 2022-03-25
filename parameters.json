@@ -306,7 +306,7 @@
     "model": "NeuralNetwork()",
     "seed": 42,
     "generator": {
-      "sample_number": 1000,
+      "sample_number": 500,
       "gauss": {
         "class_0": [
           [
