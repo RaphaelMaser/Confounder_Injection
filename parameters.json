@@ -37,12 +37,14 @@
     },
     "confounding": {
       "inject_noise": {
-        "noise_rate": 0,
-        "noise_factor": 0,
-        "classes": [
-          0,
-          1
-        ]
+        "noise1": {
+          "noise_rate": 0,
+          "noise_factor": 0,
+          "classes": [
+            0,
+            1
+          ]
+        }
       },
       "add_confounder": {
         "confounder_0": {
@@ -93,11 +95,13 @@
     },
     "confounding": {
       "inject_noise": {
-        "noise_rate": 0.7,
-        "noise_factor": 1000,
-        "classes": [
-          1
-        ]
+        "noise1": {
+          "noise_rate": 0.7,
+          "noise_factor": 1000,
+          "classes": [
+            1
+          ]
+        }
       },
       "add_confounder": {
         "confounder_0": {
@@ -148,9 +152,11 @@
     },
     "confounding": {
       "inject_noise": {
-        "noise_rate": 0,
-        "noise_factor": 0,
-        "classes": []
+        "noise1": {
+          "noise_rate": 0,
+          "noise_factor": 0,
+          "classes": []
+        }
       },
       "add_confounder": {
         "confounder_0": {
@@ -207,9 +213,11 @@
     },
     "confounding": {
       "inject_noise": {
-        "noise_rate": 0,
-        "noise_factor": 0,
-        "classes": []
+        "noise1": {
+          "noise_rate": 0,
+          "noise_factor": 0,
+          "classes": []
+        }
       },
       "add_confounder": {
         "confounder_0": {
@@ -253,5 +261,46 @@
         }
       }
     }
+  },
+  "2features_justNoise_easy": {
+    "model": "NeuralNetwork()",
+    "seed": 42,
+    "generator": {
+      "sample_number": 500,
+      "gauss": {
+        "class_0": [
+          [
+            -50,
+            10
+          ],
+          [
+            -100,
+            10
+          ]
+        ],
+        "class_1": [
+          [
+            50,
+            10
+          ],
+          [
+            100,
+            10
+          ]
+        ]
+      }
+    },
+    "confounding": {
+      "inject_noise": {
+        "noise1": {
+          "noise_rate": 0,
+          "noise_factor": 0,
+          "classes": [
+            0
+          ]
+        }
+      }
+    }
   }
 }
+
