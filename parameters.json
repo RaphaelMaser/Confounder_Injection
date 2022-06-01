@@ -4,57 +4,8 @@
     "seed": 42,
     "generator": {
       "sample_number": 1000,
-      "gauss": {
-        "class_0": [
-          [
-            -50,
-            10
-          ],
-          [
-            -100,
-            10
-          ],
-          [
-            -200,
-            50
-          ]
-        ],
-        "class_1": [
-          [
-            50,
-            10
-          ],
-          [
-            100,
-            10
-          ],
-          [
-            0,
-            50
-          ]
-        ]
-      }
-    },
-    "confounding": {
-      "inject_noise": {
-        "noise1": {
-          "noise_rate": 0,
-          "noise_factor": 0,
-          "classes": [
-            0,
-            1
-          ]
-        }
-      },
-      "add_confounder": {
-        "confounder_0": {
-          "distribution": "gauss",
-          "mean": 0,
-          "std": 0,
-          "classes": [],
-          "features": []
-        }
-      }
+      "mode": "br_net",
+      "strength": 0.8
     }
   },
   "param_1": {
