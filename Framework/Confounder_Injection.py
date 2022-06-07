@@ -83,10 +83,10 @@ class CfDataset(torch.utils.data.Dataset):
 
 
 class create_dataloader:
-    def __init__(self, x, y, split, batch_size):
+    def __init__(self, x, y, batch_size):
         self.x = x
         self.y = y
-        self.split = split
+        #self.split = split
         self.batch_size = batch_size
 
 
@@ -109,22 +109,23 @@ class create_dataloader:
 
     def get_dataloader(self):
         dataset = self.get_dataset()
-        train_dataset, test_dataset = self.split_dataset(dataset)
+        #train_dataset, test_dataset = self.split_dataset(dataset)
 
         # create DataLoader
-        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size,shuffle=True)
+        train_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        #test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size,shuffle=True)
 
-        return train_dataloader, test_dataloader
+        return train_dataloader
 
 
 class generator:
-    def __init__(self, mode, samples, seed=42):
+    def __init__(self, mode, samples, seed=42, confounded_samples=1):
         np.random.seed(seed)
         self.x = None
         self.y = None
         self.cf = None
         self.samples = samples
+        self.confounded_samples = confounded_samples
 
         if mode == "br-net":
             self.br_net()
@@ -311,8 +312,10 @@ class confounder:
         self.mode = mode
         self.test_dataloader = None
         self.train_dataloader = None
-        self.x = None
-        self.y = None
+        self.train_x = None
+        self.train_y = None
+        self.test_x = None
+        self.test_y = None
         self.accuracy = []
         self.loss = []
         self.debug = debug
@@ -321,12 +324,16 @@ class confounder:
             print("Model:\n",model)
         pass
 
-    def generate_data(self, mode=None, samples=512):
-        g = generator(mode, samples)
-        self.x, self.y = g.get_data()
+    def generate_data(self, training_data=None, test_data=None, samples=512, train_confounding=1, test_confounding=1, split=0.8):
+        train_samples = int(samples*split)
+        test_samples = samples - train_samples
+        g_train = generator(training_data, train_samples, train_confounding)
+        self.train_x, self.train_y = g_train.get_data()
+        g_test = generator(training_data, test_samples, test_confounding)
+        self.test_x, self.test_y =g_test.get_data()
         if self.debug:
             print("Generated Data of dimension ", self.x.shape)
-        return self.x, self.y
+        return self.train_x, self.train_y, self.test_x, self.test_y
 
 
     def train(self, epochs=1, device ="cpu", optimizer ="SGD", loss_fn = nn.CrossEntropyLoss(), batch_size=1):
@@ -335,7 +342,8 @@ class confounder:
 
         for i in range(0, epochs):
             # load new data
-            self.train_dataloader, self.test_dataloader = create_dataloader(self.x,self.y,0.8, batch_size).get_dataloader()
+            self.train_dataloader = create_dataloader(self.train_x,self.train_y, batch_size).get_dataloader()
+            self.test_dataloader = create_dataloader(self.test_x,self.test_y, batch_size).get_dataloader()
 
             if self.debug:
                 dataiter = iter(self.train_dataloader)
