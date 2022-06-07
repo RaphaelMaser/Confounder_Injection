@@ -252,13 +252,15 @@ class train:
         self.loss_fn = loss_fn
         self.accuracy = []
         self.loss = []
+        self.optimizer = optimizer
 
-        if optimizer == "SGD":
-            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
-        elif optimizer == "Adam":
-            self.optimizer=torch.optim.Adam(self.model.parameters())
-        else:
-            raise TypeError("Wrong Optimizer")
+
+        # if optimizer == "SGD":
+        #     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
+        # elif optimizer == "Adam":
+        #     self.optimizer=torch.optim.Adam(self.model.parameters())
+        # else:
+        #     raise TypeError("Wrong Optimizer")
 
     def test(self):
         size = len(self.test_dataloader.dataset)
