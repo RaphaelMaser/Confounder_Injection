@@ -195,7 +195,6 @@ class confounder_injection:
             self.inject_noise()
         if "add_confounder" in self.params["confounding"]:
             self.add_confounder()
-        # TODO should parse the parameters and execute confounding techniques which are specified in the params
 
 
     def inject_noise(self):
@@ -250,15 +249,16 @@ class train:
         self.test_dataloader = test_dataloader
         self.train_dataloader = train_dataloader
         self.device = device
-        self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.accuracy = []
         self.loss = []
 
-        if optimizer =="SGD":
-            self.optimizer=torch.optim.SGD(self.model.parameters(), lr=1e-3)
-
-
+        if optimizer == "SGD":
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
+        elif optimizer == "Adam":
+            self.optimizer=torch.optim.Adam(self.model.parameters())
+        else:
+            raise TypeError("Wrong Optimizer")
 
     def test(self):
         size = len(self.test_dataloader.dataset)
