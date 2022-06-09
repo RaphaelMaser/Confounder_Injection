@@ -60,15 +60,22 @@ class plot:
         #plt.savefig('synthetic_sample.jpg', format='jpg', dpi=300)
         plt.show()
 
-    def class_images(self, x, vmin=None, vmax=None):
+    def class_images(self, x):
+        vmin = np.amin(x)
+        vmax = np.amax(x)
         fig, ax = plt.subplots(1,2)
         fig.suptitle("Class-images")
         sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax)
+        ax[0].set_title("Class 0")
         sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=True, vmin=vmin, vmax=vmax)
+        ax[1].set_title("Class 1")
         #fig.colorbar(im1, ax=ax)
         #fig.colorbar(im2, ax=ax)
         plt.show()
 
+    def confounding_impact(self,x):
+        sbs.lineplot(data=x)
+        return
 
 class CfDataset(torch.utils.data.Dataset):
     def __init__(self, x, y):
@@ -119,7 +126,7 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, seed=42, confounded_samples=1):
+    def __init__(self, mode, samples, confounded_samples, seed=42, params=None):
         np.random.seed(seed)
         self.x = None
         self.y = None
@@ -128,36 +135,47 @@ class generator:
         self.confounded_samples = confounded_samples
 
         if mode == "br-net":
-            self.br_net()
+            self.br_net(params)
         elif mode == "black_n_white":
             self.black_n_white()
 
 
-    def br_net(self):
+    def br_net(self, params=None):
+        if params is None:
+            params = [
+                [[1, 4], [2, 6]], # real feature
+                [[5, 4], [10, 6]] # confounder
+            ]
+
         N = self.samples # number of subjects in a group
+        confounded_samples = int(N*self.confounded_samples)
         labels = np.zeros((N*2,))
         labels[N:] = 1
 
         # 2 confounding effects between 2 groups
         cf = np.zeros((N*2,))
-        cf[:N] = np.random.uniform(1,4,size=N)
-        cf[N:] = np.random.uniform(3,6,size=N)
+        cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
+        cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
 
         # 2 major effects between 2 groups
         mf = np.zeros((N*2,))
-        mf[:N] = np.random.uniform(1,4,size=N)
-        mf[N:] = np.random.uniform(3,6,size=N)
+        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
+        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
 
         # simulate images
         x = np.zeros((N*2,1,32,32))
         y = np.zeros((N*2))
         y[N:] = 1
+        l = 0
         for i in range(N*2):
             x[i,0,:16,:16] = self.gkern(kernlen=16, nsig=5)*mf[i]
-            x[i,0,16:,:16] = self.gkern(kernlen=16, nsig=5)*cf[i]
-            x[i,0,:16,16:] = self.gkern(kernlen=16, nsig=5)*cf[i]
+            if (i % N) < confounded_samples:
+                x[i,0,16:,:16] = self.gkern(kernlen=16, nsig=5)*cf[i]
+                x[i,0,:16,16:] = self.gkern(kernlen=16, nsig=5)*cf[i]
+                l+=1
             x[i,0,16:,16:] = self.gkern(kernlen=16, nsig=5)*mf[i]
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
+        #print("For confounded_samples=",confounded_samples," there were ",l,"confounded samples")
         self.x = x
         self.y = y
         self.cf = cf
@@ -324,12 +342,12 @@ class confounder:
             print("Model:\n",model)
         pass
 
-    def generate_data(self, training_data=None, test_data=None, samples=512, train_confounding=1, test_confounding=1, split=0.8):
+    def generate_data(self, training_data=None, test_data=None, samples=512, train_confounding=1, test_confounding=1, split=0.8, params=None):
         train_samples = int(samples*split)
         test_samples = samples - train_samples
-        g_train = generator(training_data, train_samples, train_confounding)
+        g_train = generator(training_data, train_samples, train_confounding, params=params)
         self.train_x, self.train_y = g_train.get_data()
-        g_test = generator(training_data, test_samples, test_confounding)
+        g_test = generator(training_data, test_samples, test_confounding, params=params)
         self.test_x, self.test_y =g_test.get_data()
         if self.debug:
             print("Generated Data of dimension ", self.x.shape)
