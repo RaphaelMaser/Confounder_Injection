@@ -74,7 +74,7 @@ class plot:
         plt.show()
 
     def confounding_impact(self,x):
-        sbs.lineplot(data=x)
+        sbs.lineplot(x)
         return
 
 class CfDataset(torch.utils.data.Dataset):
