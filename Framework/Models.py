@@ -10,9 +10,9 @@ class NeuralNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 2),
             #nn.ReLU(),
-            #nn.Linear(512, 2),
+            #nn.Linear(64, 2),
             #nn.ReLU(),
-            #nn.Linear(128, 2),
+            #nn.Linear(16, 2),
             #nn.ReLU()
         )
 
