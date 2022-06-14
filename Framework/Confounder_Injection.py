@@ -106,18 +106,20 @@ class create_dataloader:
         return dataset
 
 
-    def split_dataset(self, dataset):
-        # split dataset
-        train_size = int(self.split * len(dataset))
-        test_size = len(dataset) - train_size
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset,[train_size,test_size])
-        return train_dataset, test_dataset
+    # def split_dataset(self, dataset):
+    #     # split dataset
+    #     train_size = int(self.split * len(dataset))
+    #     test_size = len(dataset) - train_size
+    #     train_dataset, test_dataset = torch.utils.data.random_split(dataset,[train_size,test_size])
+    #     return train_dataset, test_dataset
 
 
     def get_dataloader(self):
+        #if len(self.x) <= 0:
+        #    return None
         dataset = self.get_dataset()
         #train_dataset, test_dataset = self.split_dataset(dataset)
-
+        # TODO delete unnecessary stuff
         # create DataLoader
         train_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         #test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size,shuffle=True)
@@ -131,6 +133,7 @@ class generator:
         self.x = None
         self.y = None
         self.cf = None
+        self.debug = False
         self.samples = samples
         self.confounded_samples = confounded_samples
 
@@ -175,7 +178,12 @@ class generator:
                 l+=1
             x[i,0,16:,16:] = self.gkern(kernlen=16, nsig=5)*mf[i]
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
-        #print("For confounded_samples=",confounded_samples," there were ",l,"confounded samples")
+        if self.debug:
+            print("--- generator ---")
+            print("Confounding factor:",self.confounded_samples)
+            print("Number of samples per group")
+            print("Confounded samples per group (estimate):", confounded_samples)
+            print("Confounded samples per group (counted)", l/2)
         self.x = x
         self.y = y
         self.cf = cf
@@ -339,18 +347,20 @@ class confounder:
         self.debug = debug
 
         if debug:
+            print("--- constructor ---")
             print("Model:\n",model)
         pass
 
     def generate_data(self, training_data=None, test_data=None, samples=512, train_confounding=1, test_confounding=1, split=0.8, params=None):
-        train_samples = int(samples*split)
-        test_samples = samples - train_samples
-        g_train = generator(training_data, train_samples, train_confounding, params=params)
+        #train_samples = int(samples*split)
+        #test_samples = samples - train_samples
+        g_train = generator(mode=training_data, samples=samples, confounded_samples=train_confounding, params=params)
         self.train_x, self.train_y = g_train.get_data()
-        g_test = generator(training_data, test_samples, test_confounding, params=params)
+        g_test = generator(mode=training_data, samples=samples, confounded_samples=test_confounding, params=params)
         self.test_x, self.test_y =g_test.get_data()
         if self.debug:
-            print("Generated Data of dimension ", self.x.shape)
+            print("--- generate_data ---")
+            print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
@@ -363,18 +373,14 @@ class confounder:
             self.train_dataloader = create_dataloader(self.train_x,self.train_y, batch_size).get_dataloader()
             self.test_dataloader = create_dataloader(self.test_x,self.test_y, batch_size).get_dataloader()
 
-            if self.debug:
-                dataiter = iter(self.train_dataloader)
-                x, y= dataiter.next()
-                print("Shape of Dataloader_train:\nx = ", x.shape,"\ny = ", y.shape)
-
             t = train(self.mode, self.model, self.train_dataloader, self.test_dataloader,device,optimizer,loss_fn)
             accuracy, loss = t.run()
             self.accuracy.append(accuracy)
             self.loss.append(loss)
 
-
-        print("Training took ",time.time() - delta_t, "s")
+        if self.debug:
+            print("--- train ---")
+            print("Training took ",time.time() - delta_t, "s")
         return self.accuracy, self.loss
 
     # implement cross validation here (call train.run() multiple times)

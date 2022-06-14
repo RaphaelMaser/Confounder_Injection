@@ -26,6 +26,27 @@ class NeuralNetwork(nn.Module):
 
 
 # Building a Neural Network architecture
+class SimpleConv(nn.Module):
+    def __init__(self):
+        super(SimpleConv, self).__init__()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Conv2d(1, 6, kernel_size=5),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Flatten(),
+            nn.Linear(1176,84),
+            nn.ReLU(),
+
+            nn.Linear(84,2)
+        )
+
+    def forward(self, x):
+        #x = self.flatten(x)
+        logits = self.linear_relu_stack(x)
+        return logits
+
+# Building a Neural Network architecture
 class LeNet_5(nn.Module):
     def __init__(self):
         super(LeNet_5, self).__init__()
