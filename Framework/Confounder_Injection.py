@@ -377,7 +377,7 @@ class confounder:
 
             if self.debug:
                 print("--- generate_data ---")
-                print("Generated Data of dimension ", self.train_x.shape)
+                #print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
@@ -397,7 +397,7 @@ class confounder:
                 self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], batch_size).get_dataloader()
                 self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], batch_size).get_dataloader()
 
-                t = train(self.mode, self.model, self.train_dataloader, self.test_dataloader,device,model_optimizer,loss_fn)
+                t = train(self.mode, self.model, self.test_dataloader, self.train_dataloader,device,model_optimizer,loss_fn)
                 accuracy, loss = t.run()
                 epoch_acc.append(accuracy)
                 #self.loss.append(loss)
