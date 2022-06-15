@@ -8,6 +8,7 @@
 '''
 127.0.0.1:8000:/?token=417c65a720ebe817507356246b10f9a925d3b89cbb60ed50
 '''
+import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,6 +22,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from Framework import Models
+import warnings
+import pandas as pd
 
 
 
@@ -31,7 +34,7 @@ class plot:
     def __init__(self):
         pass
 
-    def acc_loss(self, acc, loss):
+    def accuracy_over_epoch(self, acc, loss):
         sbs.lineplot(y=acc, x=range(1,len(acc)+1))
         plt.title("Accuracy")
         plt.ylim(0,1.1)
@@ -44,7 +47,7 @@ class plot:
     def tsne(self, x, y, n):
         x = np.reshape(x, (x.shape[0],-1))
         x_embedded = TSNE(random_state=42, n_components=n, learning_rate="auto", init="pca").fit_transform(x)
-        print("t_SNE shape: ",x_embedded.shape)
+        #print("t_SNE shape: ",x_embedded.shape)
         sbs.scatterplot(x=x_embedded[:,0], y=x_embedded[:,1], hue=y)
         plt.title("t-SNE")
         plt.ylabel("Probability")
@@ -76,6 +79,20 @@ class plot:
     def confounding_impact(self,x):
         sbs.lineplot(x)
         return
+
+    def accuracy_vs_strength(self, accuracy):
+        step_size = 1/len(accuracy)
+        index = np.arange(0, 1, step_size)
+        total_acc_mean, total_acc_max = [], []
+        for a in accuracy:
+            total_acc_mean.append(np.mean(a))
+            total_acc_max.append(np.max(a))
+        data = {'Mean accuracy':total_acc_mean, 'Max accuracy':total_acc_max}
+
+        data_df = pd.DataFrame(data, index=index)
+        sbs.lineplot(data=data_df, marker='.')
+        plt.xlabel("Strength of confounder")
+        plt.ylabel("Accuracy")
 
 class CfDataset(torch.utils.data.Dataset):
     def __init__(self, x, y):
@@ -281,14 +298,6 @@ class train:
         self.loss = []
         self.optimizer = optimizer
 
-
-        # if optimizer == "SGD":
-        #     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
-        # elif optimizer == "Adam":
-        #     self.optimizer=torch.optim.Adam(self.model.parameters())
-        # else:
-        #     raise TypeError("Wrong Optimizer")
-
     def test(self):
         size = len(self.test_dataloader.dataset)
         num_batches = len(self.test_dataloader)
@@ -331,10 +340,9 @@ class train:
 
 
 class confounder:
-    def __init__(self, seed=42, model=Models.NeuralNetwork(32 * 32), mode="NeuralNetwork", debug=False):
+    def __init__(self, seed=42, mode="NeuralNetwork", debug=False):
         np.random.seed(seed)
         torch.manual_seed(seed)
-        self.model = model
         self.mode = mode
         self.test_dataloader = None
         self.train_dataloader = None
@@ -345,44 +353,90 @@ class confounder:
         self.accuracy = []
         self.loss = []
         self.debug = debug
+        self.index = []
 
         if debug:
             print("--- constructor ---")
-            print("Model:\n",model)
+            #print("Model:\n",model)
         pass
 
-    def generate_data(self, training_data=None, test_data=None, samples=512, train_confounding=1, test_confounding=1, split=0.8, params=None):
-        #train_samples = int(samples*split)
-        #test_samples = samples - train_samples
-        g_train = generator(mode=training_data, samples=samples, confounded_samples=train_confounding, params=params)
-        self.train_x, self.train_y = g_train.get_data()
-        g_test = generator(mode=training_data, samples=samples, confounded_samples=test_confounding, params=params)
-        self.test_x, self.test_y =g_test.get_data()
-        if self.debug:
-            print("--- generate_data ---")
-            print("Generated Data of dimension ", self.train_x.shape)
+    def generate_data(self, mode=None, test_data=None, samples=512, train_confounding=1, test_confounding=[1], params=None):
+        self.train_x, self.train_y, self.test_x, self.test_y = [], [], [], []
+        self.index = test_confounding
+
+        for cf_var in test_confounding:
+            g_train = generator(mode=mode, samples=samples, confounded_samples=train_confounding, params=params)
+            g_train_data = g_train.get_data()
+            self.train_x.append(g_train_data[0])
+            self.train_y.append(g_train_data[1])
+
+            g_test = generator(mode=mode, samples=samples, confounded_samples=cf_var, params=params)
+            g_test_data =g_test.get_data()
+            self.test_x.append(g_test_data[0])
+            self.test_y.append(g_test_data[1])
+
+            if self.debug:
+                print("--- generate_data ---")
+                print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, epochs=1, device ="cpu", optimizer ="SGD", loss_fn = nn.CrossEntropyLoss(), batch_size=1):
-
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cpu", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
         delta_t = time.time()
+        set = 0
 
-        for i in range(0, epochs):
-            # load new data
-            self.train_dataloader = create_dataloader(self.train_x,self.train_y, batch_size).get_dataloader()
-            self.test_dataloader = create_dataloader(self.test_x,self.test_y, batch_size).get_dataloader()
+        if hyper_params == None:
+            raise AssertionError("Choose some hyperparameter for the optimizer")
 
-            t = train(self.mode, self.model, self.train_dataloader, self.test_dataloader,device,optimizer,loss_fn)
-            accuracy, loss = t.run()
-            self.accuracy.append(accuracy)
-            self.loss.append(loss)
+        for cf_var in self.index:
+            self.model = copy.deepcopy(model)
+            model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'])
+            epoch_acc = []
+            for i in range(0, epochs):
+                # load new data
+                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], batch_size).get_dataloader()
+                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], batch_size).get_dataloader()
+
+                t = train(self.mode, self.model, self.train_dataloader, self.test_dataloader,device,model_optimizer,loss_fn)
+                accuracy, loss = t.run()
+                epoch_acc.append(accuracy)
+                #self.loss.append(loss)
+            self.accuracy.append(epoch_acc)
+            set += 1
 
         if self.debug:
             print("--- train ---")
             print("Training took ",time.time() - delta_t, "s")
         return self.accuracy, self.loss
 
-    # implement cross validation here (call train.run() multiple times)
-    def cross_validate(self):
-        pass
+
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False):
+        p = plot()
+
+        if accuracy_vs_epoch:
+            if len(self.accuracy) > 1:
+                print("There are multiple arrays of accuracy. Only showing the first one. Use accuracy_vs_strength to show all")
+            p.accuracy_over_epoch(self.accuracy[0], self.loss)
+
+        if accuracy_vs_strength:
+            p.accuracy_vs_strength(self.accuracy)
+
+
+        if tsne:
+            if len(self.train_x) > 1:
+                print("There are multiple arrays of data. Only showing the first one.")
+            p.tsne(self.train_x[0], self.train_y[0], 2)
+
+        if image:
+            if len(self.train_x) > 1:
+                print("There are multiple arrays of data. Only showing the first one.")
+            p.image(self.train_x[0][0])
+
+        if class_images:
+            if len(self.train_x) > 1:
+                print("There are multiple arrays of data. Only showing the first one.")
+            p.class_images(self.train_x[0])
+
+
+    def show_stats(self, tSNE=False, image=False, accuracy=False):
+        return
