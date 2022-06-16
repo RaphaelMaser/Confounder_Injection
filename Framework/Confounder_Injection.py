@@ -81,16 +81,16 @@ class plot:
         return
 
     def accuracy_vs_strength(self, accuracy):
-        step_size = 1/len(accuracy)
+        step_size = 1/(len(accuracy)-1)
         index = np.arange(0, 1, step_size)
         total_acc_mean, total_acc_max = [], []
         for a in accuracy:
             total_acc_mean.append(np.mean(a))
             total_acc_max.append(np.max(a))
-        data = {'Mean accuracy':total_acc_mean, 'Max accuracy':total_acc_max}
+        data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
 
-        data_df = pd.DataFrame(data, index=index)
-        sbs.lineplot(data=data_df, marker='.')
+        data_df = pd.DataFrame(data)
+        sbs.lineplot(data=data_df, marker='o')
         plt.xlabel("Strength of confounder")
         plt.ylabel("Accuracy")
 
