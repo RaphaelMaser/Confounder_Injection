@@ -361,19 +361,24 @@ class confounder:
         pass
 
     def generate_data(self, mode=None, test_data=None, samples=512, train_confounding=1, test_confounding=[1], params=None):
-        self.train_x, self.train_y, self.test_x, self.test_y = [], [], [], []
+        iterations = len(test_confounding)
+        self.train_x, self.test_x = np.empty((iterations,samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
+        self.train_y, self.test_y = np.empty((iterations,samples*2)), np.empty((iterations,samples*2))
         self.index = test_confounding
 
+        i = 0
         for cf_var in test_confounding:
             g_train = generator(mode=mode, samples=samples, confounded_samples=train_confounding, params=params)
             g_train_data = g_train.get_data()
-            self.train_x.append(g_train_data[0])
-            self.train_y.append(g_train_data[1])
+            self.train_x[i] = g_train_data[0]
+            self.train_y[i] = g_train_data[1]
 
             g_test = generator(mode=mode, samples=samples, confounded_samples=cf_var, params=params)
             g_test_data =g_test.get_data()
-            self.test_x.append(g_test_data[0])
-            self.test_y.append(g_test_data[1])
+            self.test_x[i] = g_test_data[0]
+            self.test_y[i] = g_test_data[1]
+
+            i += 1
 
             if self.debug:
                 print("--- generate_data ---")
@@ -410,7 +415,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_set=0, saliency_sample=0):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_class=0, saliency_sample=0):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -437,14 +442,28 @@ class confounder:
                 print("There are multiple arrays of data. Only showing the first one.")
             p.class_images(self.train_x[0])
 
+        if saliency:
+            self.saliency_map(saliency_class=saliency_class, saliency_sample=saliency_sample)
+
 
     # performs forward and backward pass to compute saliency map
     # only applicable for one training set
-    def saliency_map(self, saliency_set=0, saliency_sample=0):
+    def saliency_map(self, saliency_class=0, saliency_sample=0):
         self.model.eval()
-        input = self.train_x[0][0]
+
+        # getting the input image
+        classes = np.unique(self.train_y)
+        print("self.train_x.shape",self.train_x.shape)
+        print("len(self.train_x):",len(self.train_x))
+        samples_per_class = int(len(self.train_x)/classes)
+        sample = saliency_class*samples_per_class + saliency_sample
+        input = self.train_x[saliency_sample]
         input = torch.tensor(input)
+        print(input.shape)
+
+        # gradients need to be computed for the image
         input.requires_grad = True
-        pred = self.model(self.train_x[0])
+
+        pred = self.model(input)
 
         return
