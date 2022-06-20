@@ -82,14 +82,14 @@ class plot:
 
     def accuracy_vs_strength(self, accuracy):
         step_size = 1/(len(accuracy)-1)
-        index = np.arange(0, 1, step_size)
+        index = np.arange(0, 1.1, step_size)
         total_acc_mean, total_acc_max = [], []
         for a in accuracy:
             total_acc_mean.append(np.mean(a))
             total_acc_max.append(np.max(a))
         data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
 
-        data_df = pd.DataFrame(data)
+        data_df = pd.DataFrame(data, index=index)
         sbs.lineplot(data=data_df, marker='o')
         plt.xlabel("Strength of confounder")
         plt.ylabel("Accuracy")
@@ -410,7 +410,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_set=0, saliency_sample=0):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -438,5 +438,13 @@ class confounder:
             p.class_images(self.train_x[0])
 
 
-    def show_stats(self, tSNE=False, image=False, accuracy=False):
+    # performs forward and backward pass to compute saliency map
+    # only applicable for one training set
+    def saliency_map(self, saliency_set=0, saliency_sample=0):
+        self.model.eval()
+        input = self.train_x[0][0]
+        input = torch.tensor(input)
+        input.requires_grad = True
+        pred = self.model(self.train_x[0])
+
         return
