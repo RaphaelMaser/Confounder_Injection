@@ -32,15 +32,15 @@ warnings.filterwarnings("ignore",category=FutureWarning)
 
 class plot:
     def __init__(self):
+        self.fontsize = 18
         pass
 
     def accuracy_over_epoch(self, acc, loss):
-        sbs.lineplot(y=acc, x=range(1,len(acc)+1))
-        plt.title("Accuracy")
+        sbs.lineplot(y=acc, x=range(1,len(acc)+1)).set(title="Accuracy vs Epoch")
         plt.ylim(0,1.1)
         plt.xlim(1,len(acc))
         plt.show()
-        print("With mean accuracy=",np.mean(acc))
+        #print("With mean accuracy=",np.mean(acc))
 
 
     # plot distributions (includes all samples of the class)
@@ -49,7 +49,7 @@ class plot:
         x_embedded = TSNE(random_state=42, n_components=n, learning_rate="auto", init="pca").fit_transform(x)
         #print("t_SNE shape: ",x_embedded.shape)
         sbs.scatterplot(x=x_embedded[:,0], y=x_embedded[:,1], hue=y)
-        plt.title("t-SNE")
+        plt.title("t-SNE", fontsize=19)
         plt.ylabel("Probability")
         plt.xlabel("Value")
         plt.show()
@@ -67,11 +67,11 @@ class plot:
         vmin = np.amin(x)
         vmax = np.amax(x)
         fig, ax = plt.subplots(1,2)
-        fig.suptitle("Class-images")
-        sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax)
-        ax[0].set_title("Class 0")
-        sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=True, vmin=vmin, vmax=vmax)
-        ax[1].set_title("Class 1")
+        fig.suptitle("Class-images", fontsize=self.fontsize)
+        sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax).set(title="Class 0")
+        #ax[0].set_title("Class 0")
+        sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=True, vmin=vmin, vmax=vmax).set(title="Class 1")
+        #ax[1].set_title("Class 1")
         #fig.colorbar(im1, ax=ax)
         #fig.colorbar(im2, ax=ax)
         plt.show()
@@ -90,7 +90,7 @@ class plot:
         data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
 
         data_df = pd.DataFrame(data, index=index)
-        sbs.lineplot(data=data_df, marker='o')
+        sbs.lineplot(data=data_df, marker='o').set(title="Accuracy vs Strength")
         plt.xlabel("Strength of confounder")
         plt.ylabel("Accuracy")
 
@@ -354,6 +354,7 @@ class confounder:
         self.loss = []
         self.debug = debug
         self.index = []
+        self.fontsize = 18
 
         if debug:
             print("--- constructor ---")
@@ -415,7 +416,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_class=0, saliency_sample=0):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -443,27 +444,38 @@ class confounder:
             p.class_images(self.train_x[0])
 
         if saliency:
-            self.saliency_map(saliency_class=saliency_class, saliency_sample=saliency_sample)
+            saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample)
+            saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample)
+
+            fig, ax = plt.subplots(1,2)
+            fig.suptitle("Saliency map", fontsize = self.fontsize)
+            sbsi.imshow(saliency_class_0[0][0], ax=ax[0]).set(title=f"Class {0} and Sample {saliency_sample}")
+            sbsi.imshow(saliency_class_1[0][0], ax=ax[1]).set(title=f"Class {1} and Sample {saliency_sample}")
+            plt.show()
 
 
-    # performs forward and backward pass to compute saliency map
+# performs forward and backward pass to compute saliency map
     # only applicable for one training set
     def saliency_map(self, saliency_class=0, saliency_sample=0):
         self.model.eval()
 
         # getting the input image
-        classes = np.unique(self.train_y)
-        print("self.train_x.shape",self.train_x.shape)
-        print("len(self.train_x):",len(self.train_x))
-        samples_per_class = int(len(self.train_x)/classes)
+        classes = len(np.unique(self.train_y))
+        samples_per_class = int(self.train_x.shape[1]/classes)
         sample = saliency_class*samples_per_class + saliency_sample
-        input = self.train_x[saliency_sample]
-        input = torch.tensor(input)
-        print(input.shape)
+        x = self.train_x[0][sample]
+        x = torch.tensor(x, dtype=torch.float)
+        x = torch.reshape(x, (1,1,32,32))
 
         # gradients need to be computed for the image
-        input.requires_grad = True
+        x.requires_grad = True
 
-        pred = self.model(input)
+        # predict labels
+        pred = self.model(x)
 
-        return
+        # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
+        pred_idx = pred.argmax()
+        pred[0,pred_idx].backward()
+        saliency = torch.abs(x.grad)
+
+        return saliency
