@@ -63,17 +63,25 @@ class plot:
         #plt.savefig('synthetic_sample.jpg', format='jpg', dpi=300)
         plt.show()
 
-    def class_images(self, x):
+    def class_images(self, x, gray=True, title=None):
         vmin = np.amin(x)
         vmax = np.amax(x)
-        fig, ax = plt.subplots(1,2)
-        fig.suptitle("Class-images", fontsize=self.fontsize)
-        sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax).set(title="Class 0")
-        #ax[0].set_title("Class 0")
-        sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=True, vmin=vmin, vmax=vmax).set(title="Class 1")
-        #ax[1].set_title("Class 1")
-        #fig.colorbar(im1, ax=ax)
-        #fig.colorbar(im2, ax=ax)
+        images = [x[0][0], x[int(len(x)/2)+1][0]]
+        #sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax).set(title="Class 0")
+        #sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=gray, vmin=vmin, vmax=vmax).set(title="Class 1")
+        self.images(images, gray=True)
+
+    def images(self, x, gray=False, title=None):
+        vmin = np.amin(x)
+        vmax = np.amax(x)
+
+        plots = len(x)
+        fig, ax = plt.subplots(1,plots)
+        fig.suptitle(title, fontsize = self.fontsize)
+
+        for i in range(plots):
+            sbsi.imshow(x[i], ax=ax[i], gray=gray, vmax=vmax, vmin=vmin).set(title=f"Class {i}")
+
         plt.show()
 
     def confounding_impact(self,x):
@@ -416,7 +424,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0, smoothgrad=False):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -441,23 +449,51 @@ class confounder:
         if class_images:
             if len(self.train_x) > 1:
                 print("There are multiple arrays of data. Only showing the first one.")
-            p.class_images(self.train_x[0])
+            x = self.train_x[0]
+            p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title="Class-images")
 
         if saliency:
             saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample)
             saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample)
 
-            fig, ax = plt.subplots(1,2)
-            fig.suptitle("Saliency map", fontsize = self.fontsize)
-            sbsi.imshow(saliency_class_0[0][0], ax=ax[0]).set(title=f"Class {0} and Sample {saliency_sample}")
-            sbsi.imshow(saliency_class_1[0][0], ax=ax[1]).set(title=f"Class {1} and Sample {saliency_sample}")
-            plt.show()
+            p.images([saliency_class_0, saliency_class_1], title="Saliency map")
+
+        if smoothgrad:
+            saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample)
+            saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample)
+
+            p.images([saliency_class_0, saliency_class_1], title="SmoothGrad")
 
 
-# performs forward and backward pass to compute saliency map
-    # only applicable for one training set
+    def smoothgrad(self, saliency_class=0, saliency_sample=0):
+        N = 50
+        noise = 0.15
+
+        # getting the input image
+        classes = len(np.unique(self.train_y))
+        samples_per_class = int(self.train_x.shape[1]/classes)
+        sample = saliency_class*samples_per_class + saliency_sample
+        x = self.train_x[0][sample][0]
+
+        # compute min and max of values, compute sigma
+        x_min = np.min(x)
+        x_max = np.max(x)
+        sigma = noise*(x_max - x_min)
+
+        # computing saliency
+        saliency_map = np.zeros((N,32,32))
+
+        for i in range(0,N):
+            image_noise = np.random.normal(0,sigma, size=(32,32))
+            x_noisy = x + image_noise
+            x_noisy = torch.tensor(x_noisy, dtype=torch.float)
+            x_noisy = torch.reshape(x_noisy, (1,1,32,32))
+            saliency_map[i] = self.compute_saliency(x_noisy)
+
+        saliency_map = (1/N) * np.sum(saliency_map, axis=0)
+        return np.array(saliency_map)
+
     def saliency_map(self, saliency_class=0, saliency_sample=0):
-        self.model.eval()
 
         # getting the input image
         classes = len(np.unique(self.train_y))
@@ -467,6 +503,13 @@ class confounder:
         x = torch.tensor(x, dtype=torch.float)
         x = torch.reshape(x, (1,1,32,32))
 
+        saliency_map = self.compute_saliency(x)
+
+        return np.array(saliency_map)
+
+    def compute_saliency(self,x):
+        self.model.eval()
+
         # gradients need to be computed for the image
         x.requires_grad = True
 
@@ -474,8 +517,9 @@ class confounder:
         pred = self.model(x)
 
         # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
+        # argmax returns vector with index of the maximum value (zero for class zero, one for class one)
         pred_idx = pred.argmax()
         pred[0,pred_idx].backward()
         saliency = torch.abs(x.grad)
-
-        return saliency
+        #print(saliency.shape)
+        return saliency[0][0]
