@@ -179,7 +179,10 @@ class generator:
             self.black_n_white()
         elif mode == "br_net_simple":
             self.br_net_simple(params)
-            pass
+        elif mode == "br_net_mixed":
+            self.br_net_mixed(params)
+        else:
+            raise AssertionError("Generator mode not valid")
 
     def br_net(self, params=None):
         if params is None:
@@ -226,6 +229,50 @@ class generator:
         self.y = y
         self.cf = cf
 
+    def br_net_mixed(self, params=None):
+        if params is None:
+            params = [
+                [[1, 4], [2, 6]], # real feature
+                [[5, 4], [10, 6]] # confounder
+            ]
+
+        N = self.samples # number of subjects in a group
+        confounded_samples = int(N*self.confounded_samples)
+        labels = np.zeros((N*2,))
+        labels[N:] = 1
+
+        # 2 confounding effects between 2 groups
+        cf = np.zeros((N*2,))
+        cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
+        cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
+
+        # 2 major effects between 2 groups
+        mf = np.zeros((N*2,))
+        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
+        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
+
+        # simulate images
+        x = np.zeros((N*2,1,32,32))
+        y = np.zeros((N*2))
+        y[N:] = 1
+        l = 0
+        for i in range(N*2):
+            x[i,0,:22,:22] += self.gkern(kernlen=22, nsig=5)*mf[i]
+            if (i % N) < confounded_samples:
+                x[i,0,10:,:22] += self.gkern(kernlen=22, nsig=5)*cf[i]
+                x[i,0,:22,10:] += self.gkern(kernlen=22, nsig=5)*cf[i]
+                l+=1
+            x[i,0,10:,10:] += self.gkern(kernlen=22, nsig=5)*mf[i]
+            x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
+        if self.debug:
+            print("--- generator ---")
+            print("Confounding factor:",self.confounded_samples)
+            print("Number of samples per group")
+            print("Confounded samples per group (estimate):", confounded_samples)
+            print("Confounded samples per group (counted)", l/2)
+        self.x = x
+        self.y = y
+        self.cf = cf
 
     def br_net_simple(self, params=None):
         if params is None:
