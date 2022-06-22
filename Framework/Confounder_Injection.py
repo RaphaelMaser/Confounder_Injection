@@ -87,20 +87,13 @@ class plot:
 
     def image_slider(self, train_x):
         plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        img = sbsi.imshow(train_x[0][0], ax=ax)
         max = len(train_x) - 1
-        interact(self.image_n, train_x=fixed(train_x),img=fixed((fig, ax, img)), n=widgets.IntSlider(min=0, max=max, step=1, value=0));
+        interact(self.image_n, train_x=fixed(train_x), n=widgets.IntSlider(min=0, max=max, step=1, value=0));
 
 
-    def image_n(self, train_x, img, n):
-        fig, ax, img = img
-        img.set_data(train_x[n][0], ax=ax)
-        #sbsi.imshow(train_x[n][0], ax=ax)
-        #plt.plot()
-        fig.canvas.draw()
-        #fig.canvas.flush_events()
+    def image_n(self, train_x, n):
+        plt.imshow(train_x[n][0])
+        plt.show()
         return
 
     def confounding_impact(self,x):
