@@ -39,8 +39,7 @@ class plot:
         pass
 
     def accuracy_over_epoch(self, acc, loss):
-        sbs.lineplot(y=acc, x=range(1,len(acc)+1)).set(title="Accuracy vs Epoch")
-        plt.ylim(0,1.1)
+        sbs.lineplot(y=acc, x=range(1,len(acc)+1)).set(title="Accuracy vs Epoch", ylim=(0.45,1.05))
         plt.xlim(1,len(acc))
         plt.show()
         #print("With mean accuracy=",np.mean(acc))
@@ -110,7 +109,7 @@ class plot:
         data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
 
         data_df = pd.DataFrame(data, index=index)
-        sbs.lineplot(data=data_df, marker='o').set(title="Accuracy vs Strength")
+        sbs.lineplot(data=data_df, marker='o').set(title="Accuracy vs Strength", ylim=(0.45,1.05))
         plt.xlabel("Strength of confounder")
         plt.ylabel("Accuracy")
 
