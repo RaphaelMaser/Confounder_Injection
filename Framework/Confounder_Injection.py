@@ -24,6 +24,9 @@ from torch.utils.data import DataLoader
 from Framework import Models
 import warnings
 import pandas as pd
+import ipywidgets as widgets
+from ipywidgets import interact, interactive, fixed, interact_manual
+
 
 
 
@@ -64,8 +67,6 @@ class plot:
         plt.show()
 
     def class_images(self, x, gray=True, title=None):
-        vmin = np.amin(x)
-        vmax = np.amax(x)
         images = [x[0][0], x[int(len(x)/2)+1][0]]
         #sbsi.imshow(x[0][0],ax=ax[0], gray=True, vmin=vmin, vmax=vmax).set(title="Class 0")
         #sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=gray, vmin=vmin, vmax=vmax).set(title="Class 1")
@@ -81,8 +82,26 @@ class plot:
 
         for i in range(plots):
             sbsi.imshow(x[i], ax=ax[i], gray=gray, vmax=vmax, vmin=vmin).set(title=f"Class {i}")
-
         plt.show()
+
+
+    def image_slider(self, train_x):
+        plt.ion()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        img = sbsi.imshow(train_x[0][0], ax=ax)
+        max = len(train_x) - 1
+        interact(self.image_n, train_x=fixed(train_x),img=fixed((fig, ax, img)), n=widgets.IntSlider(min=0, max=max, step=1, value=0));
+
+
+    def image_n(self, train_x, img, n):
+        fig, ax, img = img
+        img.set_data(train_x[n][0], ax=ax)
+        #sbsi.imshow(train_x[n][0], ax=ax)
+        #plt.plot()
+        fig.canvas.draw()
+        #fig.canvas.flush_events()
+        return
 
     def confounding_impact(self,x):
         sbs.lineplot(x)
@@ -162,11 +181,13 @@ class generator:
         self.samples = samples
         self.confounded_samples = confounded_samples
 
-        if mode == "br-net":
+        if mode == "br-net" or mode == "br_net":
             self.br_net(params)
         elif mode == "black_n_white":
             self.black_n_white()
-
+        elif mode == "br_net_simple":
+            self.br_net_simple(params)
+            pass
 
     def br_net(self, params=None):
         if params is None:
@@ -212,6 +233,59 @@ class generator:
         self.x = x
         self.y = y
         self.cf = cf
+
+
+    def br_net_simple(self, params=None):
+        if params is None:
+            params = [
+                [[1, 4], [2, 6]], # real feature
+                [[5, 4], [10, 6]] # confounder
+            ]
+
+        N = self.samples # number of subjects in a group
+        confounded_samples = int(N*self.confounded_samples)
+        labels = np.zeros((N*2,))
+        labels[N:] = 1
+
+        # 2 confounding effects between 2 groups
+        cf = np.zeros((N*2,))
+        cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
+        cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
+
+        # 2 major effects between 2 groups
+        mf = np.zeros((N*2,))
+        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
+        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
+
+        # simulate images
+        x = np.zeros((N*2,1,32,32))
+        y = np.zeros((N*2))
+        y[N:] = 1
+        l = 0
+
+        for i in range(N*2):
+            if i/N < 1:
+                x[i,0,:16,:16] = self.gkern(kernlen=16, nsig=5)*mf[i]
+            if (i % N) < confounded_samples:
+                if i/N < 1:
+                    x[i,0,16:,:16] = self.gkern(kernlen=16, nsig=5)*cf[i]
+                if i/N >= 1:
+                    x[i,0,:16,16:] = self.gkern(kernlen=16, nsig=5)*cf[i]
+                l+=1
+            if i/N >= 1:
+                x[i,0,16:,16:] = self.gkern(kernlen=16, nsig=5)*mf[i]
+            x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
+
+        if self.debug:
+            print("--- generator ---")
+            print("Confounding factor:",self.confounded_samples)
+            print("Number of samples per group")
+            print("Confounded samples per group (estimate):", confounded_samples)
+            print("Confounded samples per group (counted)", l/2)
+        self.x = x
+        self.y = y
+        self.cf = cf
+
 
     def black_n_white(self):
         N = self.samples
@@ -424,7 +498,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0, smoothgrad=False):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0, smoothgrad=False, image_slider=None):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -445,6 +519,9 @@ class confounder:
             if len(self.train_x) > 1:
                 print("There are multiple arrays of data. Only showing the first one.")
             p.image(self.train_x[0][0])
+
+        if image_slider != None:
+            p.image_slider(self.train_x[image_slider])
 
         if class_images:
             if len(self.train_x) > 1:
