@@ -536,8 +536,8 @@ class confounder:
 
 
     def smoothgrad(self, saliency_class=0, saliency_sample=0):
-        N = 50
-        noise = 0.15
+        N = 100
+        noise = 0.20
 
         # getting the input image
         classes = len(np.unique(self.train_y))
