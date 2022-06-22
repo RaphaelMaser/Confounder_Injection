@@ -164,7 +164,7 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounded_samples, seed=42, params=None):
+    def __init__(self, mode, samples, confounded_samples, overlap=0, seed=42, params=None):
         np.random.seed(seed)
         self.x = None
         self.y = None
@@ -172,6 +172,7 @@ class generator:
         self.debug = False
         self.samples = samples
         self.confounded_samples = confounded_samples
+        self.overlap = overlap
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -185,6 +186,10 @@ class generator:
             raise AssertionError("Generator mode not valid")
 
     def br_net(self, params=None):
+        overlap = self.overlap
+        assert(overlap % 2 == 0 and overlap <= 16)
+        overhang = int(overlap / 2)
+
         if params is None:
             params = [
                 [[1, 4], [2, 6]], # real feature
@@ -212,12 +217,12 @@ class generator:
         y[N:] = 1
         l = 0
         for i in range(N*2):
-            x[i,0,:16,:16] = self.gkern(kernlen=16, nsig=5)*mf[i]
+            x[i,0,:16 + overhang, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
             if (i % N) < confounded_samples:
-                x[i,0,16:,:16] = self.gkern(kernlen=16, nsig=5)*cf[i]
-                x[i,0,:16,16:] = self.gkern(kernlen=16, nsig=5)*cf[i]
+                x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+                x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5)*cf[i]
                 l+=1
-            x[i,0,16:,16:] = self.gkern(kernlen=16, nsig=5)*mf[i]
+            x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
         if self.debug:
             print("--- generator ---")
@@ -229,50 +234,6 @@ class generator:
         self.y = y
         self.cf = cf
 
-    def br_net_mixed(self, params=None):
-        if params is None:
-            params = [
-                [[1, 4], [2, 6]], # real feature
-                [[5, 4], [10, 6]] # confounder
-            ]
-
-        N = self.samples # number of subjects in a group
-        confounded_samples = int(N*self.confounded_samples)
-        labels = np.zeros((N*2,))
-        labels[N:] = 1
-
-        # 2 confounding effects between 2 groups
-        cf = np.zeros((N*2,))
-        cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
-        cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
-
-        # 2 major effects between 2 groups
-        mf = np.zeros((N*2,))
-        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
-        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
-
-        # simulate images
-        x = np.zeros((N*2,1,32,32))
-        y = np.zeros((N*2))
-        y[N:] = 1
-        l = 0
-        for i in range(N*2):
-            x[i,0,:22,:22] += self.gkern(kernlen=22, nsig=5)*mf[i]
-            if (i % N) < confounded_samples:
-                x[i,0,10:,:22] += self.gkern(kernlen=22, nsig=5)*cf[i]
-                x[i,0,:22,10:] += self.gkern(kernlen=22, nsig=5)*cf[i]
-                l+=1
-            x[i,0,10:,10:] += self.gkern(kernlen=22, nsig=5)*mf[i]
-            x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
-        if self.debug:
-            print("--- generator ---")
-            print("Confounding factor:",self.confounded_samples)
-            print("Number of samples per group")
-            print("Confounded samples per group (estimate):", confounded_samples)
-            print("Confounded samples per group (counted)", l/2)
-        self.x = x
-        self.y = y
-        self.cf = cf
 
     def br_net_simple(self, params=None):
         if params is None:
@@ -482,7 +443,7 @@ class confounder:
             #print("Model:\n",model)
         pass
 
-    def generate_data(self, mode=None, test_data=None, samples=512, train_confounding=1, test_confounding=[1], params=None):
+    def generate_data(self, mode=None, samples=512, overlap=0, train_confounding=1, test_confounding=[1], params=None):
         iterations = len(test_confounding)
         self.train_x, self.test_x = np.empty((iterations,samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
         self.train_y, self.test_y = np.empty((iterations,samples*2)), np.empty((iterations,samples*2))
@@ -490,12 +451,12 @@ class confounder:
 
         i = 0
         for cf_var in test_confounding:
-            g_train = generator(mode=mode, samples=samples, confounded_samples=train_confounding, params=params)
+            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=train_confounding, params=params)
             g_train_data = g_train.get_data()
             self.train_x[i] = g_train_data[0]
             self.train_y[i] = g_train_data[1]
 
-            g_test = generator(mode=mode, samples=samples, confounded_samples=cf_var, params=params)
+            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=cf_var, params=params)
             g_test_data =g_test.get_data()
             self.test_x[i] = g_test_data[0]
             self.test_y[i] = g_test_data[1]
