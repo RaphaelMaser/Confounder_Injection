@@ -114,32 +114,30 @@ class plot:
         plt.ylabel("Accuracy")
 
 class CfDataset(torch.utils.data.Dataset):
-    def __init__(self, x, y):
+    def __init__(self, x, y, domain=None, confounder=None):
         self.x = x
         self.y = y
+
+        if domain == None:
+            domain = np.zeros((len(y)))
+
+        self.domain=domain
 
     def __len__(self):
         return len(self.y)
 
     def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
+        return self.x[idx], {'y': self.y[idx], 'domain': self.domain[idx]}
 
 
 class create_dataloader:
-    def __init__(self, x, y, batch_size):
+    def __init__(self, x=None, y=None, domain=[], batch_size=1):
+        #assert(x != None and y != None)
         self.x = x
         self.y = y
+        self.domain = domain
         #self.split = split
         self.batch_size = batch_size
-
-
-    def get_dataset(self):
-
-        tensor_x = torch.Tensor(self.x)
-        tensor_y = torch.Tensor(self.y).long()
-
-        dataset = CfDataset(tensor_x, tensor_y)
-        return dataset
 
 
     # def split_dataset(self, dataset):
@@ -153,7 +151,11 @@ class create_dataloader:
     def get_dataloader(self):
         #if len(self.x) <= 0:
         #    return None
-        dataset = self.get_dataset()
+        tensor_x = torch.Tensor(self.x)
+        tensor_y = torch.Tensor(self.y).long()
+        tensor_domain = torch.Tensor(self.domain).long()
+
+        dataset = CfDataset(x=tensor_x, y=tensor_y, domain=tensor_domain)
         #train_dataset, test_dataset = self.split_dataset(dataset)
         # TODO delete unnecessary stuff
         # create DataLoader
@@ -173,6 +175,7 @@ class generator:
         self.samples = samples
         self.confounded_samples = confounded_samples
         self.overlap = overlap
+        self.domain = None
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -180,12 +183,14 @@ class generator:
             self.black_n_white()
         elif mode == "br_net_simple":
             self.br_net_simple(params)
-        elif mode == "br_net_mixed":
-            self.br_net_mixed(params)
         else:
             raise AssertionError("Generator mode not valid")
 
-    def br_net(self, params=None):
+    def br_net(self, params=None, domain=0):
+        self.domain = np.full((self.samples, 32,32), domain)
+
+        if self.samples <= 0:
+            return None, None
         overlap = self.overlap
         assert(overlap % 2 == 0 and overlap <= 32)
         overhang = int(overlap / 2)
@@ -386,11 +391,31 @@ class train:
         self.model.eval()
         test_loss, accuracy = 0, 0
         with torch.no_grad():
-            for X,y in self.test_dataloader:
-                X,y = X.to(self.device), y.to(self.device)
+            for X,label in self.test_dataloader:
+                #X = X.to(self.device)
+                #label.to(self.device)
+
                 pred = self.model(X)
-                test_loss += self.loss_fn(pred, y).item()
-                accuracy += (pred.argmax(1) == y).type(torch.float).sum().item()
+                test_loss += self.loss_fn(pred, label["y"]).item()
+                accuracy += (pred.argmax(1) == label['y']).type(torch.float).sum().item()
+        test_loss /= num_batches
+        accuracy /= size
+
+        return accuracy, test_loss
+
+    def test_DANN(self):
+        size = len(self.test_dataloader.dataset)
+        num_batches = len(self.test_dataloader)
+        self.model.eval()
+        test_loss, accuracy = 0, 0
+        with torch.no_grad():
+            for X,label in self.test_dataloader:
+                #X = X.to(self.device)
+                #label.to(self.device)
+
+                class_pred, domain_pred = self.model(X)
+                test_loss += self.loss_fn(class_pred, label["y"]).item()
+                accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
         test_loss /= num_batches
         accuracy /= size
 
@@ -401,23 +426,55 @@ class train:
         self.model = self.model.to(self.device)
 
         self.model.train()
-        for batch, (X,y) in enumerate(self.train_dataloader):
-            X,y = X.to(self.device), y.to(self.device)
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            #X = X.to(self.device)
+            #label.to(self.device)
 
             # Compute prediction error
             pred = self.model(X)
-            loss = self.loss_fn(pred, y)
+            loss = self.loss_fn(pred, label['y'])
 
             # Backpropagation
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+        return
 
+    def train_DANN(self):
+        self.model = self.model.to(self.device)
+
+        # loss functions
+        class_crossentropy = nn.CrossEntropyLoss()
+        domain_crossentropy = nn.CrossEntropyLoss()
+
+        self.model.train()
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            #X = X.to(self.device)
+
+            # Compute prediction error
+
+            # prediction
+            class_pred, conf_pred = self.model(X)
+
+            # compute error
+            class_loss = class_crossentropy(class_pred, label["y"])
+            domain_loss = domain_crossentropy(conf_pred, label["domain"])
+            loss = class_loss + domain_loss
+
+            # Backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
         return
 
     def run(self):
-        self.train_normal()
-        accuracy, loss = self.test()
+        if isinstance(self.model, Models.SimpleConv_DANN):
+            self.train_DANN()
+            accuracy, loss = self.test_DANN()
+        else:
+            self.train_normal()
+            accuracy, loss = self.test()
+
         return accuracy, loss
 
 
@@ -432,6 +489,7 @@ class confounder:
         self.train_y = None
         self.test_x = None
         self.test_y = None
+        self.domain = None
         self.accuracy = []
         self.loss = []
         self.debug = debug
@@ -443,23 +501,37 @@ class confounder:
             #print("Model:\n",model)
         pass
 
-    def generate_data(self, mode=None, samples=512, overlap=0, train_confounding=1, test_confounding=[1], params=None):
+    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=None):
         iterations = len(test_confounding)
-        self.train_x, self.test_x = np.empty((iterations,samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
-        self.train_y, self.test_y = np.empty((iterations,samples*2)), np.empty((iterations,samples*2))
+        self.train_x, self.test_x = np.empty((iterations,samples*2 + target_domain_samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
+        self.train_y, self.test_y = np.empty((iterations,samples*2 + target_domain_samples*2)), np.empty((iterations,samples*2))
+        self.domain = np.full((iterations,samples*2 + target_domain_samples*2),0)
+        self.domain[:,samples*2:] = np.full((target_domain_samples*2),1)
+        #target_domain_x = np.empty((target_domain_samples*2,1,32,32))
+        #target_domain_y = np.empty((target_domain_samples*2))
+
         self.index = test_confounding
 
         i = 0
         for cf_var in test_confounding:
             g_train = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=train_confounding, params=params)
             g_train_data = g_train.get_data()
-            self.train_x[i] = g_train_data[0]
-            self.train_y[i] = g_train_data[1]
+            self.train_x[i,:samples*2] = g_train_data[0]
+            self.train_y[i,:samples*2] = g_train_data[1]
 
             g_test = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=cf_var, params=params)
             g_test_data =g_test.get_data()
             self.test_x[i] = g_test_data[0]
             self.test_y[i] = g_test_data[1]
+
+            # append target domain data to source domain data
+            if target_domain_samples != 0:
+                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounded_samples=target_domain_confounding, params=params)
+                g_target_domain_data =g_target_domain.get_data()
+                target_domain_x = g_target_domain_data[0]
+                target_domain_y = g_target_domain_data[1]
+                self.train_x[i,samples*2:] = target_domain_x
+                self.train_y[i,samples*2:] = target_domain_y
 
             i += 1
 
@@ -482,13 +554,11 @@ class confounder:
             epoch_acc = []
             for i in range(0, epochs):
                 # load new data
-                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], batch_size).get_dataloader()
-                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], batch_size).get_dataloader()
-
+                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.domain[set], batch_size=batch_size).get_dataloader()
+                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], domain=self.domain[set], batch_size=batch_size).get_dataloader()
                 t = train(self.mode, self.model, self.test_dataloader, self.train_dataloader,device,model_optimizer,loss_fn)
                 accuracy, loss = t.run()
                 epoch_acc.append(accuracy)
-                #self.loss.append(loss)
             self.accuracy.append(epoch_acc)
             set += 1
 
