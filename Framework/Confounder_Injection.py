@@ -187,7 +187,7 @@ class generator:
 
     def br_net(self, params=None):
         overlap = self.overlap
-        assert(overlap % 2 == 0 and overlap <= 16)
+        assert(overlap % 2 == 0 and overlap <= 32)
         overhang = int(overlap / 2)
 
         if params is None:
