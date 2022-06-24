@@ -20,7 +20,7 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
-        return logits
+        return logits, None
 
 
 # In[11]:
@@ -45,7 +45,7 @@ class SimpleConv(nn.Module):
     def forward(self, x):
         #x = self.flatten(x)
         logits = self.linear_relu_stack(x)
-        return logits
+        return logits, None
 
 # Building a Neural Network architecture
 class LeNet_5(nn.Module):
@@ -73,7 +73,7 @@ class LeNet_5(nn.Module):
     def forward(self, x):
         #x = self.flatten(x)
         logits = self.linear_relu_stack(x)
-        return logits
+        return logits, None
 
 
 # In[12]:
@@ -103,7 +103,7 @@ class Br_Net(nn.Module):
     def forward(self, x):
         #x = self.flatten(x)
         logits = self.linear_relu_stack(x)
-        return logits
+        return logits, None
 
 class SimpleConv_DANN(nn.Module):
     def __init__(self):
@@ -114,17 +114,17 @@ class SimpleConv_DANN(nn.Module):
             nn.MaxPool2d(kernel_size=2),
 
             nn.Flatten(),
-            nn.Linear(1176,84),
+            nn.Linear(1176,256),
             nn.ReLU(),
 
-            #nn.Linear(84,2)
+            nn.Linear(256,84)
         )
 
         self.class_predictor = nn.Sequential(
-            nn.Linear(84,2),
+            nn.Linear(84,2)
         )
 
-        self.conf_predictor = nn.Sequential(
+        self.domain_predictor = nn.Sequential(
             nn.Linear(84,2)
         )
 
@@ -133,5 +133,5 @@ class SimpleConv_DANN(nn.Module):
         reverse_features = GradientReversal.apply(features)
 
         class_features = self.class_predictor(features)
-        conf_features = self.conf_predictor(reverse_features)
-        return class_features, conf_features
+        domain_features = self.domain_predictor(reverse_features)
+        return class_features, domain_features

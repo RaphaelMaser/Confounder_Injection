@@ -395,9 +395,9 @@ class train:
                 #X = X.to(self.device)
                 #label.to(self.device)
 
-                pred = self.model(X)
-                test_loss += self.loss_fn(pred, label["y"]).item()
-                accuracy += (pred.argmax(1) == label['y']).type(torch.float).sum().item()
+                class_pred, domain_pred = self.model(X)
+                test_loss += self.loss_fn(class_pred, label["y"]).item()
+                accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
         test_loss /= num_batches
         accuracy /= size
 
@@ -431,8 +431,8 @@ class train:
             #label.to(self.device)
 
             # Compute prediction error
-            pred = self.model(X)
-            loss = self.loss_fn(pred, label['y'])
+            class_pred, domain_pred = self.model(X)
+            loss = self.loss_fn(class_pred, label['y'])
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -457,13 +457,16 @@ class train:
             class_pred, conf_pred = self.model(X)
 
             # compute error
+
             class_loss = class_crossentropy(class_pred, label["y"])
             domain_loss = domain_crossentropy(conf_pred, label["domain"])
-            loss = class_loss + domain_loss
+            #loss = class_loss + domain_loss
 
             # Backpropagation
             self.optimizer.zero_grad()
-            loss.backward()
+            class_loss.backward(retain_graph=True)
+            domain_loss.backward()
+            #loss.backward()
             self.optimizer.step()
         return
 
@@ -568,7 +571,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0, smoothgrad=False, image_slider=None):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, class_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -593,34 +596,40 @@ class confounder:
         if image_slider != None:
             p.image_slider(self.train_x[image_slider])
 
-        if class_images:
-            if len(self.train_x) > 1:
-                print("There are multiple arrays of data. Only showing the first one.")
-            x = self.train_x[0]
-            p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title="Class-images")
+        if train_images:
+            for i in class_image_iteration:
+                x = self.train_x[i]
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Train-images (iteration {i})")
+
+        if test_images:
+            for i in class_image_iteration:
+                x = self.test_x[i]
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})")
 
         if saliency:
-            saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample)
-            saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample)
+            for i in saliency_iteration:
+                saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+                saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-            p.images([saliency_class_0, saliency_class_1], title="Saliency map")
+                p.images([saliency_class_0, saliency_class_1], title="Saliency map")
 
         if smoothgrad:
-            saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample)
-            saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample)
+            for i in saliency_iteration:
+                saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+                saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-            p.images([saliency_class_0, saliency_class_1], title="SmoothGrad")
+                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad (iteration {i})")
 
 
-    def smoothgrad(self, saliency_class=0, saliency_sample=0):
+    def smoothgrad(self, saliency_class=0, saliency_sample=0, saliency_iteration=None):
         N = 100
         noise = 0.20
 
         # getting the input image
-        classes = len(np.unique(self.train_y))
-        samples_per_class = int(self.train_x.shape[1]/classes)
+        classes = len(np.unique(self.test_y))
+        samples_per_class = int(self.test_x.shape[1]/classes)
         sample = saliency_class*samples_per_class + saliency_sample
-        x = self.train_x[0][sample][0]
+        x = self.test_x[saliency_iteration][sample][0]
 
         # compute min and max of values, compute sigma
         x_min = np.min(x)
@@ -640,13 +649,13 @@ class confounder:
         saliency_map = (1/N) * np.sum(saliency_map, axis=0)
         return np.array(saliency_map)
 
-    def saliency_map(self, saliency_class=0, saliency_sample=0):
+    def saliency_map(self, saliency_class=0, saliency_sample=0, saliency_iteration=0):
 
         # getting the input image
-        classes = len(np.unique(self.train_y))
-        samples_per_class = int(self.train_x.shape[1]/classes)
+        classes = len(np.unique(self.test_y))
+        samples_per_class = int(self.test_x.shape[1]/classes)
         sample = saliency_class*samples_per_class + saliency_sample
-        x = self.train_x[0][sample]
+        x = self.test_x[saliency_iteration][sample]
         x = torch.tensor(x, dtype=torch.float)
         x = torch.reshape(x, (1,1,32,32))
 
@@ -661,12 +670,12 @@ class confounder:
         x.requires_grad = True
 
         # predict labels
-        pred = self.model(x)
+        class_pred, domain_pred = self.model(x)
 
         # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
         # argmax returns vector with index of the maximum value (zero for class zero, one for class one)
-        pred_idx = pred.argmax()
-        pred[0,pred_idx].backward()
+        pred_idx = class_pred.argmax()
+        class_pred[0,pred_idx].backward()
         saliency = torch.abs(x.grad)
         #print(saliency.shape)
         return saliency[0][0]
