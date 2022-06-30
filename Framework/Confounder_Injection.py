@@ -114,32 +114,30 @@ class plot:
         plt.ylabel("Accuracy")
 
 class CfDataset(torch.utils.data.Dataset):
-    def __init__(self, x, y):
+    def __init__(self, x, y, domain=None, confounder=None):
         self.x = x
         self.y = y
+
+        if domain == None:
+            domain = np.zeros((len(y)))
+
+        self.domain=domain
 
     def __len__(self):
         return len(self.y)
 
     def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
+        return self.x[idx], {'y': self.y[idx], 'domain': self.domain[idx]}
 
 
 class create_dataloader:
-    def __init__(self, x, y, batch_size):
+    def __init__(self, x=None, y=None, domain=[], batch_size=1):
+        #assert(x != None and y != None)
         self.x = x
         self.y = y
+        self.domain = domain
         #self.split = split
         self.batch_size = batch_size
-
-
-    def get_dataset(self):
-
-        tensor_x = torch.Tensor(self.x)
-        tensor_y = torch.Tensor(self.y).long()
-
-        dataset = CfDataset(tensor_x, tensor_y)
-        return dataset
 
 
     # def split_dataset(self, dataset):
@@ -153,7 +151,11 @@ class create_dataloader:
     def get_dataloader(self):
         #if len(self.x) <= 0:
         #    return None
-        dataset = self.get_dataset()
+        tensor_x = torch.Tensor(self.x)
+        tensor_y = torch.Tensor(self.y).long()
+        tensor_domain = torch.Tensor(self.domain).long()
+
+        dataset = CfDataset(x=tensor_x, y=tensor_y, domain=tensor_domain)
         #train_dataset, test_dataset = self.split_dataset(dataset)
         # TODO delete unnecessary stuff
         # create DataLoader
@@ -164,15 +166,19 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounded_samples, overlap=0, seed=42, params=None):
+    def __init__(self, mode, samples, confounded_samples, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
         np.random.seed(seed)
         self.x = None
         self.y = None
-        self.cf = None
+        self.cf_labels = None
+        self.domain_labels = None
+
         self.debug = False
         self.samples = samples
         self.confounded_samples = confounded_samples
         self.overlap = overlap
+        self.domain = domain
+        self.de_correlate_confounder = de_correlate_confounder
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -180,12 +186,15 @@ class generator:
             self.black_n_white()
         elif mode == "br_net_simple":
             self.br_net_simple(params)
-        elif mode == "br_net_mixed":
-            self.br_net_mixed(params)
         else:
             raise AssertionError("Generator mode not valid")
 
     def br_net(self, params=None):
+        self.domain_labels = np.full((self.samples, 32,32), self.domain)
+        self.cf_labels = np.empty((self.samples*2))
+
+        if self.samples <= 0:
+            return None, None
         overlap = self.overlap
         assert(overlap % 2 == 0 and overlap <= 32)
         overhang = int(overlap / 2)
@@ -201,10 +210,20 @@ class generator:
         labels = np.zeros((N*2,))
         labels[N:] = 1
 
-        # 2 confounding effects between 2 groups
         cf = np.zeros((N*2,))
-        cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
-        cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
+        if self.de_correlate_confounder == False:
+            # 2 confounding effects between 2 groups
+            self.cf_labels[:confounded_samples] = 0
+            self.cf_labels[N:N+confounded_samples] = 1
+            cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
+            cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
+        else:
+            # 2 confounding effects between 2 groups, confounder chosen by chance
+            for i in range(0,len(cf)):
+                rand = np.random.randint(0,2)
+                self.cf_labels[i] = rand
+                cf[i] = np.random.uniform(params[1][rand][0], params[1][rand][1], size=1)
+
 
         # 2 major effects between 2 groups
         mf = np.zeros((N*2,))
@@ -215,24 +234,27 @@ class generator:
         x = np.zeros((N*2,1,32,32))
         y = np.zeros((N*2))
         y[N:] = 1
-        l = 0
+
         for i in range(N*2):
+            # add real feature
             x[i,0,:16 + overhang, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
+            x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
+
+            # check if confounder should be added
             if (i % N) < confounded_samples:
                 x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
-                x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5)*cf[i]
-                l+=1
-            x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
+                x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+
+            # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
+
         if self.debug:
             print("--- generator ---")
             print("Confounding factor:",self.confounded_samples)
             print("Number of samples per group")
             print("Confounded samples per group (estimate):", confounded_samples)
-            print("Confounded samples per group (counted)", l/2)
         self.x = x
         self.y = y
-        self.cf = cf
 
 
     def br_net_simple(self, params=None):
@@ -309,63 +331,7 @@ class generator:
         return kernel
 
     def get_data(self):
-        return self.x, self.y
-
-
-class confounder_injection:
-    def __init__(self, data, params):
-        self.data = np.array(data)
-        self.params = params
-
-        if "inject_noise" in self.params["confounding"]:
-            self.inject_noise()
-        if "add_confounder" in self.params["confounding"]:
-            self.add_confounder()
-
-
-    def inject_noise(self):
-        '''
-        Injects noise in distribution
-        Parameters are noise_rate (number of samples to be manipulated) and noise_factor (impact of noise)
-        '''
-        noise_params = self.params["confounding"]["inject_noise"]
-
-        for noise in noise_params:
-            noise_rate = noise_params[noise]["noise_rate"]
-            noise_factor = noise_params[noise]["noise_factor"]
-            for c in noise_params[noise]["classes"]:
-                for i in range(0,len(self.data[c])):
-                    if random.uniform(0, 1) < noise_rate:
-                        self.data[c][i] += random.uniform(-noise_factor,noise_factor)
-
-        return
-
-
-    def add_confounder(self):
-        '''
-        Injects confounder in distribution
-        Parameters are distribution, mean  and std
-        '''
-        add_confounder_params = self.params["confounding"]["add_confounder"]
-
-        for c in add_confounder_params:
-            confounder = add_confounder_params[c]
-
-            distribution = None
-            if confounder["distribution"] == "gauss":
-                distribution = np.random.normal
-            assert distribution != None
-
-            for c in confounder["classes"]:
-                for i in range(0,len(self.data[c])):
-                    for f in confounder["features"]:
-                        self.data[c][i][f] += distribution(confounder["mean"], confounder["std"])
-
-        return
-
-
-    def get_data(self):
-        return self.data
+        return self.x, self.y#, self.domain_labels
 
 
 class train:
@@ -386,11 +352,31 @@ class train:
         self.model.eval()
         test_loss, accuracy = 0, 0
         with torch.no_grad():
-            for X,y in self.test_dataloader:
-                X,y = X.to(self.device), y.to(self.device)
-                pred = self.model(X)
-                test_loss += self.loss_fn(pred, y).item()
-                accuracy += (pred.argmax(1) == y).type(torch.float).sum().item()
+            for X,label in self.test_dataloader:
+                #X = X.to(self.device)
+                #label.to(self.device)
+
+                class_pred, domain_pred = self.model(X)
+                test_loss += self.loss_fn(class_pred, label["y"]).item()
+                accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
+        test_loss /= num_batches
+        accuracy /= size
+
+        return accuracy, test_loss
+
+    def test_DANN(self):
+        size = len(self.test_dataloader.dataset)
+        num_batches = len(self.test_dataloader)
+        self.model.eval()
+        test_loss, accuracy = 0, 0
+        with torch.no_grad():
+            for X,label in self.test_dataloader:
+                #X = X.to(self.device)
+                #label.to(self.device)
+
+                class_pred, domain_pred = self.model(X)
+                test_loss += self.loss_fn(class_pred, label["y"]).item()
+                accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
         test_loss /= num_batches
         accuracy /= size
 
@@ -401,23 +387,58 @@ class train:
         self.model = self.model.to(self.device)
 
         self.model.train()
-        for batch, (X,y) in enumerate(self.train_dataloader):
-            X,y = X.to(self.device), y.to(self.device)
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            #X = X.to(self.device)
+            #label.to(self.device)
 
             # Compute prediction error
-            pred = self.model(X)
-            loss = self.loss_fn(pred, y)
+            class_pred, domain_pred = self.model(X)
+            loss = self.loss_fn(class_pred, label['y'])
 
             # Backpropagation
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+        return
 
+    def train_DANN(self):
+        self.model = self.model.to(self.device)
+
+        # loss functions
+        class_crossentropy = nn.CrossEntropyLoss()
+        domain_crossentropy = nn.CrossEntropyLoss()
+
+        self.model.train()
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            #X = X.to(self.device)
+
+            # Compute prediction error
+
+            # prediction
+            class_pred, conf_pred = self.model(X)
+
+            # compute error
+
+            class_loss = class_crossentropy(class_pred, label["y"])
+            domain_loss = domain_crossentropy(conf_pred, label["domain"])
+            #loss = class_loss + domain_loss
+
+            # Backpropagation
+            self.optimizer.zero_grad()
+            class_loss.backward(retain_graph=True)
+            domain_loss.backward()
+            #loss.backward()
+            self.optimizer.step()
         return
 
     def run(self):
-        self.train_normal()
-        accuracy, loss = self.test()
+        if isinstance(self.model, Models.SimpleConv_DANN):
+            self.train_DANN()
+            accuracy, loss = self.test_DANN()
+        else:
+            self.train_normal()
+            accuracy, loss = self.test()
+
         return accuracy, loss
 
 
@@ -432,6 +453,8 @@ class confounder:
         self.train_y = None
         self.test_x = None
         self.test_y = None
+        self.domain_labels = None
+        self.confounder_labels = None
         self.accuracy = []
         self.loss = []
         self.debug = debug
@@ -441,25 +464,41 @@ class confounder:
         if debug:
             print("--- constructor ---")
             #print("Model:\n",model)
-        pass
 
-    def generate_data(self, mode=None, samples=512, overlap=0, train_confounding=1, test_confounding=[1], params=None):
+
+    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
         iterations = len(test_confounding)
-        self.train_x, self.test_x = np.empty((iterations,samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
-        self.train_y, self.test_y = np.empty((iterations,samples*2)), np.empty((iterations,samples*2))
+        self.train_x, self.test_x = np.empty((iterations,samples*2 + target_domain_samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
+        self.train_y, self.test_y = np.empty((iterations,samples*2 + target_domain_samples*2)), np.empty((iterations,samples*2))
+        self.domain_labels = np.full((iterations,samples*2 + target_domain_samples*2),0)
+        self.domain_labels[:,samples*2:] = np.full((target_domain_samples*2),1)
+        #target_domain_x = np.empty((target_domain_samples*2,1,32,32))
+        #target_domain_y = np.empty((target_domain_samples*2))
+
         self.index = test_confounding
 
         i = 0
         for cf_var in test_confounding:
-            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=train_confounding, params=params)
+            # train data
+            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=train_confounding, params=params, domain=0)
             g_train_data = g_train.get_data()
-            self.train_x[i] = g_train_data[0]
-            self.train_y[i] = g_train_data[1]
+            self.train_x[i,:samples*2] = g_train_data[0]
+            self.train_y[i,:samples*2] = g_train_data[1]
 
-            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=cf_var, params=params)
+            # test data
+            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=cf_var, params=params, de_correlate_confounder=de_correlate_confounder_test)
             g_test_data =g_test.get_data()
             self.test_x[i] = g_test_data[0]
             self.test_y[i] = g_test_data[1]
+
+            # append target domain data to source domain data
+            if target_domain_samples != 0:
+                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounded_samples=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
+                g_target_domain_data =g_target_domain.get_data()
+                target_domain_x = g_target_domain_data[0]
+                target_domain_y = g_target_domain_data[1]
+                self.train_x[i,samples*2:] = target_domain_x
+                self.train_y[i,samples*2:] = target_domain_y
 
             i += 1
 
@@ -482,13 +521,11 @@ class confounder:
             epoch_acc = []
             for i in range(0, epochs):
                 # load new data
-                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], batch_size).get_dataloader()
-                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], batch_size).get_dataloader()
-
+                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.domain_labels[set], batch_size=batch_size).get_dataloader()
+                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], domain=self.domain_labels[set], batch_size=batch_size).get_dataloader()
                 t = train(self.mode, self.model, self.test_dataloader, self.train_dataloader,device,model_optimizer,loss_fn)
                 accuracy, loss = t.run()
                 epoch_acc.append(accuracy)
-                #self.loss.append(loss)
             self.accuracy.append(epoch_acc)
             set += 1
 
@@ -498,7 +535,7 @@ class confounder:
         return self.accuracy, self.loss
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, class_images=False, saliency=False, saliency_sample=0, smoothgrad=False, image_slider=None):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None):
         p = plot()
 
         if accuracy_vs_epoch:
@@ -523,34 +560,40 @@ class confounder:
         if image_slider != None:
             p.image_slider(self.train_x[image_slider])
 
-        if class_images:
-            if len(self.train_x) > 1:
-                print("There are multiple arrays of data. Only showing the first one.")
-            x = self.train_x[0]
-            p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title="Class-images")
+        if train_images:
+            for i in test_image_iteration:
+                x = self.train_x[i]
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Train-images (iteration {i})")
+
+        if test_images:
+            for i in test_image_iteration:
+                x = self.test_x[i]
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})")
 
         if saliency:
-            saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample)
-            saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample)
+            for i in saliency_iteration:
+                saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+                saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-            p.images([saliency_class_0, saliency_class_1], title="Saliency map")
+                p.images([saliency_class_0, saliency_class_1], title="Saliency map")
 
         if smoothgrad:
-            saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample)
-            saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample)
+            for i in saliency_iteration:
+                saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+                saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-            p.images([saliency_class_0, saliency_class_1], title="SmoothGrad")
+                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad (iteration {i})")
 
 
-    def smoothgrad(self, saliency_class=0, saliency_sample=0):
+    def smoothgrad(self, saliency_class=0, saliency_sample=0, saliency_iteration=None):
         N = 100
         noise = 0.20
 
         # getting the input image
-        classes = len(np.unique(self.train_y))
-        samples_per_class = int(self.train_x.shape[1]/classes)
+        classes = len(np.unique(self.test_y))
+        samples_per_class = int(self.test_x.shape[1]/classes)
         sample = saliency_class*samples_per_class + saliency_sample
-        x = self.train_x[0][sample][0]
+        x = self.test_x[saliency_iteration][sample][0]
 
         # compute min and max of values, compute sigma
         x_min = np.min(x)
@@ -570,13 +613,13 @@ class confounder:
         saliency_map = (1/N) * np.sum(saliency_map, axis=0)
         return np.array(saliency_map)
 
-    def saliency_map(self, saliency_class=0, saliency_sample=0):
+    def saliency_map(self, saliency_class=0, saliency_sample=0, saliency_iteration=0):
 
         # getting the input image
-        classes = len(np.unique(self.train_y))
-        samples_per_class = int(self.train_x.shape[1]/classes)
+        classes = len(np.unique(self.test_y))
+        samples_per_class = int(self.test_x.shape[1]/classes)
         sample = saliency_class*samples_per_class + saliency_sample
-        x = self.train_x[0][sample]
+        x = self.test_x[saliency_iteration][sample]
         x = torch.tensor(x, dtype=torch.float)
         x = torch.reshape(x, (1,1,32,32))
 
@@ -591,12 +634,12 @@ class confounder:
         x.requires_grad = True
 
         # predict labels
-        pred = self.model(x)
+        class_pred, domain_pred = self.model(x)
 
         # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
         # argmax returns vector with index of the maximum value (zero for class zero, one for class one)
-        pred_idx = pred.argmax()
-        pred[0,pred_idx].backward()
+        pred_idx = class_pred.argmax()
+        class_pred[0,pred_idx].backward()
         saliency = torch.abs(x.grad)
         #print(saliency.shape)
         return saliency[0][0]
