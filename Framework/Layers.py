@@ -12,5 +12,5 @@ class GradientReversal(Function):
     @staticmethod
     def backward(self, grad):
         #print("backward called")
-        lambd = 1
+        lambd = 0.5
         return (grad * (-lambd))

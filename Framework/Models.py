@@ -105,6 +105,41 @@ class Br_Net(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+class Br_Net_DANN(nn.Module):
+    def __init__(self):
+        super(Br_Net_DANN, self).__init__()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Conv2d(1, 2, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(2, 4,kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(4, 8, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Flatten(),
+        )
+
+        self.class_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+        self.domain_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+    def forward(self, x):
+        features = self.linear_relu_stack(x)
+        reverse_features = GradientReversal.apply(features)
+
+        class_features = self.class_predictor(features)
+        domain_features = self.domain_predictor(reverse_features)
+        return class_features, domain_features
+
 class SimpleConv_DANN(nn.Module):
     def __init__(self):
         super(SimpleConv_DANN, self).__init__()
@@ -135,19 +170,18 @@ class SimpleConv_DANN(nn.Module):
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
 
-class SimpleConv_CF_free_NN(nn.Module):
+class SimpleConv_CF_free(nn.Module):
     def __init__(self):
-        super(SimpleConv_CF_free_NN, self).__init__()
+        super(SimpleConv_CF_free, self).__init__()
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
 
             nn.Flatten(),
-            nn.Linear(1176,256),
+            nn.Linear(1176,84),
             nn.ReLU(),
 
-            nn.Linear(256,84)
         )
 
         self.class_predictor = nn.Sequential(
