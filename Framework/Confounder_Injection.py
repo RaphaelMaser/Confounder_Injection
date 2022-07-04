@@ -449,7 +449,7 @@ class train:
             self.train_adversarial(mode="DANN")
             accuracy, loss = self.test_DANN()
 
-        elif isinstance(self.model, Models.SimpleConv_CF_free):
+        elif isinstance(self.model, Models.SimpleConv_CF_free) or isinstance(self.model, Models.Br_Net_CF_free):
             self.train_adversarial(mode="CF_free")
             accuracy, loss = self.test_DANN()
         else:
