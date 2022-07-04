@@ -141,8 +141,9 @@ class Br_Net_DANN(nn.Module):
         return class_features, domain_features
 
 class SimpleConv_DANN(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha):
         super(SimpleConv_DANN, self).__init__()
+        self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),
@@ -164,15 +165,16 @@ class SimpleConv_DANN(nn.Module):
 
     def forward(self, x):
         features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features)
+        reverse_features = GradientReversal.apply(features, self.alpha)
 
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
 
 class SimpleConv_CF_free(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha):
         super(SimpleConv_CF_free, self).__init__()
+        self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),
@@ -194,7 +196,7 @@ class SimpleConv_CF_free(nn.Module):
 
     def forward(self, x):
         features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features)
+        reverse_features = GradientReversal.apply(features, self.alpha)
 
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)

@@ -38,9 +38,11 @@ class plot:
         self.fontsize = 18
         pass
 
-    def accuracy_over_epoch(self, acc, loss):
-        sbs.lineplot(y=acc, x=range(1,len(acc)+1)).set(title="Accuracy vs Epoch", ylim=(0.45,1.05))
-        plt.xlim(1,len(acc))
+    def accuracy_vs_epoch(self, acc=None, loss=None, index=[]):
+        fig, ax = plt.subplots(1,len(acc), figsize=[4*len(acc),3])
+        for i in range(len(acc)):
+            sbs.lineplot(y=acc[i], x=range(1,len(acc[i])+1), ax=ax[i]).set(title=f"Accuracy vs Epoch\n strength={index[i]}", ylim=(0.45,1.05))
+        #plt.xlim(1,len(acc))
         plt.show()
         #print("With mean accuracy=",np.mean(acc))
 
@@ -195,7 +197,7 @@ class generator:
 
     def br_net(self, params=None):
         self.domain_labels = np.full((self.samples*2), self.domain)
-        self.confounder_labels = np.full((self.samples * 2),0)
+        self.confounder_labels = np.full((self.samples * 2), -1)
 
         if self.samples <= 0:
             return None, None
@@ -219,14 +221,18 @@ class generator:
             # 2 confounding effects between 2 groups
             self.confounder_labels[:confounded_samples] = 0
             self.confounder_labels[N:N + confounded_samples] = 1
-            cf[:N] = np.random.uniform(params[1][0][0], params[1][0][1],size=N)
-            cf[N:] = np.random.uniform(params[1][1][0], params[1][1][1],size=N)
+            #print("correlated: ", self.confounder_labels)
+
         else:
             # 2 confounding effects between 2 groups, confounder_labels chosen by chance
-            for i in range(0,len(cf)):
-                rand = np.random.randint(0,2)
-                self.confounder_labels[i] = rand
-                cf[i] = np.random.uniform(params[1][rand][0], params[1][rand][1], size=1)
+            self.confounder_labels[:confounded_samples] = np.random.randint(0,2,size=confounded_samples)
+            self.confounder_labels[N:N + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
+            #print("de-correlated: ",self.confounder_labels)
+
+        for i in range(0,len(cf)):
+            index = self.confounder_labels[i]
+            if index != None:
+                cf[i] = np.random.uniform(params[1][index][0], params[1][index][1], size=1)
 
 
         # 2 major effects between 2 groups
@@ -405,7 +411,7 @@ class train:
             self.optimizer.step()
         return
 
-    def train_adversarial(self, mode=None, cf_free_class=0):
+    def train_adversarial(self, mode=None, ignore=[]):
         if mode == "DANN":
             adversarial_loss = "domain_labels"
         elif mode == "CF_free":
@@ -417,33 +423,24 @@ class train:
 
         # loss functions
         class_crossentropy = nn.CrossEntropyLoss()
-        domain_crossentropy = nn.CrossEntropyLoss()
+        domain_crossentropy = nn.CrossEntropyLoss(ignore_index=-1)
 
         self.model.train()
         for batch, (X,label) in enumerate(self.train_dataloader):
             #X = X.to(self.device)
 
-            # Compute prediction error
-
             # prediction
             class_pred, conf_pred = self.model(X)
 
             # compute error
-            #print("class_label: ",label["y"])
-            #print("domain/confounder label: ",label[adversarial_loss])
             class_loss = class_crossentropy(class_pred, label["y"])
             domain_loss = domain_crossentropy(conf_pred, label[adversarial_loss])
-            #loss = class_loss + domain_loss
+            loss = class_loss + domain_loss
 
             # Backpropagation
             self.optimizer.zero_grad()
-            #if mode == "CF_free" and label[adversarial_loss] == cf_free_class:
-            #    class_loss.backward()
-            #else:
-            class_loss.backward(retain_graph=True)
-            domain_loss.backward()
+            loss.backward()
 
-            #loss.backward()
             self.optimizer.step()
         return
 
@@ -540,7 +537,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cpu", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cpu", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, alpha=0.5):
         delta_t = time.time()
         set = 0
 
@@ -571,9 +568,9 @@ class confounder:
         p = plot()
 
         if accuracy_vs_epoch:
-            if len(self.accuracy) > 1:
-                print("There are multiple arrays of accuracy. Only showing the first one. Use accuracy_vs_strength to show all")
-            p.accuracy_over_epoch(self.accuracy[0], self.loss)
+            #if len(self.accuracy) > 1:
+                #print("There are multiple arrays of accuracy. Only showing the first one. Use accuracy_vs_strength to show all")
+            p.accuracy_vs_epoch(self.accuracy, self.loss, self.index)
 
         if accuracy_vs_strength:
             p.accuracy_vs_strength(self.accuracy)
@@ -607,14 +604,14 @@ class confounder:
                 saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
                 saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-                p.images([saliency_class_0, saliency_class_1], title="Saliency map")
+                p.images([saliency_class_0, saliency_class_1], title=f"Saliency map\nstrength={self.index[i]}")
 
         if smoothgrad:
             for i in saliency_iteration:
                 saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
                 saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad (iteration {i})")
+                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad\nstrength={self.index[i]}")
 
 
     def smoothgrad(self, saliency_class=0, saliency_sample=0, saliency_iteration=None):
