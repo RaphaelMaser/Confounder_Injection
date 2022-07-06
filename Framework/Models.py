@@ -22,6 +22,8 @@ class NeuralNetwork(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+    def get_name(self):
+        return "Neural Network"
 
 # In[11]:
 
@@ -46,6 +48,9 @@ class SimpleConv(nn.Module):
         #x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits, None
+
+    def get_name(self):
+        return "SimpleConv"
 
 # Building a Neural Network architecture
 class LeNet_5(nn.Module):
@@ -105,6 +110,9 @@ class Br_Net(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+    def get_name(self):
+        return "BrNet"
+
 class Br_Net_CF_free(nn.Module):
     def __init__(self, alpha):
         super(Br_Net_CF_free, self).__init__()
@@ -140,6 +148,9 @@ class Br_Net_CF_free(nn.Module):
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
+
+    def get_name(self):
+        return "BrNet_CF_free"
 
 class Br_Net_DANN(nn.Module):
     def __init__(self, alpha):
@@ -177,6 +188,9 @@ class Br_Net_DANN(nn.Module):
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
 
+    def get_name(self):
+        return "BrNet_DANN"
+
 class SimpleConv_DANN(nn.Module):
     def __init__(self, alpha):
         super(SimpleConv_DANN, self).__init__()
@@ -208,6 +222,9 @@ class SimpleConv_DANN(nn.Module):
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
 
+    def get_name(self):
+        return "SimpleConv_DANN"
+
 class SimpleConv_CF_free(nn.Module):
     def __init__(self, alpha):
         super(SimpleConv_CF_free, self).__init__()
@@ -238,3 +255,6 @@ class SimpleConv_CF_free(nn.Module):
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
+
+    def get_name(self):
+        return "SimpleConv_CF_free"

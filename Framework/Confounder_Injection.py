@@ -38,10 +38,10 @@ class plot:
         self.fontsize = 18
         pass
 
-    def accuracy_vs_epoch(self, acc=None, loss=None, index=[]):
+    def accuracy_vs_epoch(self, acc=None, loss=None, index=[], model_name="None"):
         fig, ax = plt.subplots(1,len(acc), figsize=[4*len(acc),3])
         for i in range(len(acc)):
-            sbs.lineplot(y=acc[i], x=range(1,len(acc[i])+1), ax=ax[i]).set(title=f"Accuracy vs Epoch\n strength={index[i]}", ylim=(0.45,1.05))
+            sbs.lineplot(y=acc[i], x=range(1,len(acc[i])+1), ax=ax[i]).set(title=f"{model_name}\nAccuracy vs Epoch\n strength={index[i]}", ylim=(0.45,1.05))
         #plt.xlim(1,len(acc))
         plt.show()
         #print("With mean accuracy=",np.mean(acc))
@@ -73,13 +73,13 @@ class plot:
         #sbsi.imshow(x[int(len(x)/2)+1][0],ax=ax[1], gray=gray, vmin=vmin, vmax=vmax).set(title="Class 1")
         self.images(images, gray=True)
 
-    def images(self, x, gray=False, title=None):
+    def images(self, x, gray=False, title=None, model_name="None"):
         vmin = np.amin(x)
         vmax = np.amax(x)
 
         plots = len(x)
         fig, ax = plt.subplots(1,plots)
-        fig.suptitle(title, fontsize = self.fontsize)
+        fig.suptitle(f"{model_name}\n{title}", fontsize = self.fontsize)
 
         for i in range(plots):
             sbsi.imshow(x[i], ax=ax[i], gray=gray, vmax=vmax, vmin=vmin).set(title=f"Class {i}")
@@ -101,7 +101,7 @@ class plot:
         sbs.lineplot(x)
         return
 
-    def accuracy_vs_strength(self, accuracy):
+    def accuracy_vs_strength(self, accuracy, model_name="None"):
         step_size = 1/(len(accuracy)-1)
         index = np.arange(0, 1.1, step_size)
         total_acc_mean, total_acc_max = [], []
@@ -111,7 +111,7 @@ class plot:
         data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
 
         data_df = pd.DataFrame(data, index=index)
-        sbs.lineplot(data=data_df, marker='o').set(title="Accuracy vs Strength", ylim=(0.45,1.05))
+        sbs.lineplot(data=data_df, marker='o').set(title=f"{model_name}\nAccuracy vs Strength", ylim=(0.45,1.05))
         plt.xlabel("Strength of confounder_labels")
         plt.ylabel("Accuracy")
 
@@ -172,7 +172,7 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounded_samples, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
+    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
         np.random.seed(seed)
         self.x = None
         self.y = None
@@ -181,7 +181,7 @@ class generator:
 
         self.debug = False
         self.samples = samples
-        self.confounded_samples = confounded_samples
+        self.confounded_samples = confounding_factor
         self.overlap = overlap
         self.domain = domain
         self.de_correlate_confounder = de_correlate_confounder
@@ -196,11 +196,14 @@ class generator:
             raise AssertionError("Generator mode not valid")
 
     def br_net(self, params=None):
-        self.domain_labels = np.full((self.samples*2), self.domain)
-        self.confounder_labels = np.full((self.samples * 2), -1)
+        N = self.samples # number of subjects in a group
+
+        self.domain_labels = np.full((N*2), self.domain)
+        self.confounder_labels = np.full((N*2), -1)
 
         if self.samples <= 0:
             return None, None
+
         overlap = self.overlap
         assert(overlap % 2 == 0 and overlap <= 32)
         overhang = int(overlap / 2)
@@ -211,32 +214,32 @@ class generator:
                 [[5, 4], [10, 6]] # confounder_labels
             ]
 
-        N = self.samples # number of subjects in a group
         confounded_samples = int(N*self.confounded_samples)
-        labels = np.zeros((N*2,))
-        labels[N:] = 1
 
-        cf = np.zeros((N*2,))
-        if self.de_correlate_confounder == False:
-            # 2 confounding effects between 2 groups
-            self.confounder_labels[:confounded_samples] = 0
-            self.confounder_labels[N:N + confounded_samples] = 1
-            #print("correlated: ", self.confounder_labels)
-
-        else:
+        if self.de_correlate_confounder == True:
             # 2 confounding effects between 2 groups, confounder_labels chosen by chance
             self.confounder_labels[:confounded_samples] = np.random.randint(0,2,size=confounded_samples)
             self.confounder_labels[N:N + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
             #print("de-correlated: ",self.confounder_labels)
 
-        for i in range(0,len(cf)):
+        else:
+            # 2 confounding effects between 2 groups
+            self.confounder_labels[:confounded_samples] = 0
+            self.confounder_labels[N:N + confounded_samples] = 1
+            #print("correlated: ", self.confounder_labels)
+
+        cf = np.zeros((N*2))
+        for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
-            if index != None:
-                cf[i] = np.random.uniform(params[1][index][0], params[1][index][1], size=1)
+            if index != -1:
+                #print("Index is ",index)
+                cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
+            else:
+                cf[i] = np.nan
 
 
         # 2 major effects between 2 groups
-        mf = np.zeros((N*2,))
+        mf = np.zeros((N*2))
         mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
         mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
 
@@ -251,7 +254,7 @@ class generator:
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
             # check if confounder_labels should be added
-            if (i % N) < confounded_samples:
+            if not np.isnan(cf[i]):
                 x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
                 x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
 
@@ -505,7 +508,7 @@ class confounder:
         i = 0
         for cf_var in test_confounding:
             # train data
-            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=train_confounding, params=params, domain=0)
+            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
             g_train_data = g_train.get_data()
             self.train_x[i,:samples*2] = g_train_data[0]
             self.train_y[i,:samples*2] = g_train_data[1]
@@ -513,7 +516,7 @@ class confounder:
             self.train_confounder_labels[i,:samples*2] = g_train_data[3]
 
             # test data
-            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounded_samples=cf_var, params=params, domain=0, de_correlate_confounder=de_correlate_confounder_test)
+            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=cf_var, params=params, domain=0, de_correlate_confounder=de_correlate_confounder_test)
             g_test_data =g_test.get_data()
             self.test_x[i] = g_test_data[0]
             self.test_y[i] = g_test_data[1]
@@ -522,7 +525,7 @@ class confounder:
 
             # append target domain_labels data to source domain_labels data
             if target_domain_samples != 0:
-                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounded_samples=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
+                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
                 g_target_domain_data =g_target_domain.get_data()
                 self.train_x[i,samples*2:] = g_target_domain_data[0]
                 self.train_y[i,samples*2:] = g_target_domain_data[1]
@@ -566,14 +569,15 @@ class confounder:
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None):
         p = plot()
+        model_name = self.model.get_name()
 
         if accuracy_vs_epoch:
             #if len(self.accuracy) > 1:
                 #print("There are multiple arrays of accuracy. Only showing the first one. Use accuracy_vs_strength to show all")
-            p.accuracy_vs_epoch(self.accuracy, self.loss, self.index)
+            p.accuracy_vs_epoch(self.accuracy, self.loss, self.index, model_name)
 
         if accuracy_vs_strength:
-            p.accuracy_vs_strength(self.accuracy)
+            p.accuracy_vs_strength(self.accuracy, model_name=model_name)
 
 
         if tsne:
@@ -592,26 +596,26 @@ class confounder:
         if train_images:
             for i in test_image_iteration:
                 x = self.train_x[i]
-                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Train-images (iteration {i})")
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Train-images (iteration {i})", model_name=model_name)
 
         if test_images:
             for i in test_image_iteration:
                 x = self.test_x[i]
-                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})")
+                p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})", model_name=model_name)
 
         if saliency:
             for i in saliency_iteration:
                 saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
                 saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-                p.images([saliency_class_0, saliency_class_1], title=f"Saliency map\nstrength={self.index[i]}")
+                p.images([saliency_class_0, saliency_class_1], title=f"Saliency map\nstrength={self.index[i]}", model_name=model_name)
 
         if smoothgrad:
             for i in saliency_iteration:
                 saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
                 saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
 
-                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad\nstrength={self.index[i]}")
+                p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad\nstrength={self.index[i]}", model_name=model_name)
 
 
     def smoothgrad(self, saliency_class=0, saliency_sample=0, saliency_iteration=None):
