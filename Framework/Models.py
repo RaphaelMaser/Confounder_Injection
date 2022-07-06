@@ -22,6 +22,8 @@ class NeuralNetwork(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+    def get_name(self):
+        return "Neural Network"
 
 # In[11]:
 
@@ -46,6 +48,9 @@ class SimpleConv(nn.Module):
         #x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits, None
+
+    def get_name(self):
+        return "SimpleConv"
 
 # Building a Neural Network architecture
 class LeNet_5(nn.Module):
@@ -105,9 +110,91 @@ class Br_Net(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+    def get_name(self):
+        return "BrNet"
+
+class Br_Net_CF_free(nn.Module):
+    def __init__(self, alpha):
+        super(Br_Net_CF_free, self).__init__()
+        self.alpha = alpha
+        self.linear_relu_stack = nn.Sequential(
+            nn.Conv2d(1, 2, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(2, 4,kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(4, 8, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Flatten(),
+        )
+
+        self.class_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+        self.domain_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+    def forward(self, x):
+        features = self.linear_relu_stack(x)
+        reverse_features = GradientReversal.apply(features, self.alpha)
+
+        class_features = self.class_predictor(features)
+        domain_features = self.domain_predictor(reverse_features)
+        return class_features, domain_features
+
+    def get_name(self):
+        return "BrNet_CF_free"
+
+class Br_Net_DANN(nn.Module):
+    def __init__(self, alpha):
+        super(Br_Net_DANN, self).__init__()
+        self.alpha = alpha
+        self.linear_relu_stack = nn.Sequential(
+            nn.Conv2d(1, 2, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(2, 4,kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(4, 8, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Flatten(),
+        )
+
+        self.class_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+        self.domain_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+    def forward(self, x):
+        features = self.linear_relu_stack(x)
+        reverse_features = GradientReversal.apply(features, self.alpha)
+
+        class_features = self.class_predictor(features)
+        domain_features = self.domain_predictor(reverse_features)
+        return class_features, domain_features
+
+    def get_name(self):
+        return "BrNet_DANN"
+
 class SimpleConv_DANN(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha):
         super(SimpleConv_DANN, self).__init__()
+        self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),
@@ -129,25 +216,28 @@ class SimpleConv_DANN(nn.Module):
 
     def forward(self, x):
         features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features)
+        reverse_features = GradientReversal.apply(features, self.alpha)
 
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
 
-class SimpleConv_CF_free_NN(nn.Module):
-    def __init__(self):
-        super(SimpleConv_CF_free_NN, self).__init__()
+    def get_name(self):
+        return "SimpleConv_DANN"
+
+class SimpleConv_CF_free(nn.Module):
+    def __init__(self, alpha):
+        super(SimpleConv_CF_free, self).__init__()
+        self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
 
             nn.Flatten(),
-            nn.Linear(1176,256),
+            nn.Linear(1176,84),
             nn.ReLU(),
 
-            nn.Linear(256,84)
         )
 
         self.class_predictor = nn.Sequential(
@@ -160,8 +250,11 @@ class SimpleConv_CF_free_NN(nn.Module):
 
     def forward(self, x):
         features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features)
+        reverse_features = GradientReversal.apply(features, self.alpha)
 
         class_features = self.class_predictor(features)
         domain_features = self.domain_predictor(reverse_features)
         return class_features, domain_features
+
+    def get_name(self):
+        return "SimpleConv_CF_free"
