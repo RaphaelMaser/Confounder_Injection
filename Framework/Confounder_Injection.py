@@ -36,7 +36,7 @@ warnings.filterwarnings("ignore",category=FutureWarning)
 class plot:
     def __init__(self):
         self.fontsize = 18
-        pass
+        self.registered_data = None
 
     def accuracy_vs_epoch(self, acc=None, loss=None, index=[], model_name="None"):
         fig, ax = plt.subplots(1,len(acc), figsize=[4*len(acc),3])
@@ -102,6 +102,24 @@ class plot:
         return
 
     def accuracy_vs_strength(self, accuracy, model_name="None"):
+        step_size = 1/(len(accuracy)-1)
+        index = np.arange(0, 1.1, step_size)
+        total_acc_mean, total_acc_max = [], []
+        for a in accuracy:
+            total_acc_mean.append(np.mean(a))
+            total_acc_max.append(np.max(a))
+        data = {'Mean accuracy of all epochs':total_acc_mean, 'Max accuracy of all epochs':total_acc_max}
+
+        data_df = pd.DataFrame(data, index=index)
+        sbs.lineplot(data=data_df, marker='o').set(title=f"{model_name}\nAccuracy vs Strength", ylim=(0.45,1.05))
+        plt.xlabel("Strength of confounder_labels")
+        plt.ylabel("Accuracy")
+
+    # data has the dimension of (confounding_factor, epochs)
+    def register_data(self, accuracy, model_name="None"):
+        pass
+
+    def show_all(self):
         step_size = 1/(len(accuracy)-1)
         index = np.arange(0, 1.1, step_size)
         total_acc_mean, total_acc_max = [], []
@@ -480,7 +498,7 @@ class confounder:
         self.test_domain_labels = None
         self.test_confounder_labels = None
 
-        self.accuracy = []
+        self.accuracy = pd.DataFrame(columns=["confounder strength", "model name", "data"])
         self.loss = []
         self.debug = debug
         self.index = []
@@ -558,7 +576,8 @@ class confounder:
                 t = train(self.mode, self.model, self.test_dataloader, self.train_dataloader,device,model_optimizer,loss_fn)
                 accuracy, loss = t.run()
                 epoch_acc.append(accuracy)
-            self.accuracy.append(epoch_acc)
+            data_frame = pd.DataFrame({})
+            self.accuracy = self.accuracy.append([cf_var, self.model.get_name(), epoch_acc], ignore_index=True)
             set += 1
 
         if self.debug:
