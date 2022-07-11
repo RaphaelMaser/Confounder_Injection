@@ -197,7 +197,7 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
+    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0, conditioning=-1):
         np.random.seed(seed)
         self.x = None
         self.y = None
@@ -210,6 +210,7 @@ class generator:
         self.overlap = overlap
         self.domain = domain
         self.de_correlate_confounder = de_correlate_confounder
+        self.conditioning = conditioning
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -252,6 +253,10 @@ class generator:
             self.confounder_labels[:confounded_samples] = 0
             self.confounder_labels[N:N + confounded_samples] = 1
             #print("correlated: ", self.confounder_labels)
+
+        if self.conditioning != -1:
+            self.confounder_labels[self.conditioning*N:(self.conditioning+1)*N] = np.full((N),-1)
+
 
         cf = np.zeros((N*2))
         for i in range(0,len(self.confounder_labels)):
@@ -524,6 +529,7 @@ class confounder:
         self.debug = debug
         self.index = []
         self.fontsize = 18
+        self.model_title_add = ""
 
         if clean_results:
             confounder.all_results= pd.DataFrame()
@@ -533,7 +539,7 @@ class confounder:
             #print("Model:\n",model)
 
 
-    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
+    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, conditioning=-1, params=None):
         iterations = len(test_confounding)
         self.train_x, self.test_x = np.empty((iterations,samples*2 + target_domain_samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
         self.train_y, self.test_y = np.empty((iterations,samples*2 + target_domain_samples*2)), np.empty((iterations,samples*2))
@@ -541,9 +547,9 @@ class confounder:
         self.test_domain_labels = np.empty((iterations,samples*2))
         self.train_confounder_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
         self.test_confounder_labels = np.empty((iterations,samples*2))
-        #self.train_domain_labels[:,samples*2:] = np.full((target_domain_samples*2),1)
-        #target_domain_x = np.empty((target_domain_samples*2,1,32,32))
-        #target_domain_y = np.empty((target_domain_samples*2))
+
+        if conditioning != -1:
+            self.model_title_add = f"(conditioning={conditioning})"
 
         self.index = test_confounding
 
@@ -567,7 +573,7 @@ class confounder:
 
             # append target domain_labels data to source domain_labels data
             if target_domain_samples != 0:
-                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
+                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
                 g_target_domain_data =g_target_domain.get_data()
                 self.train_x[i,samples*2:] = g_target_domain_data[0]
                 self.train_y[i,samples*2:] = g_target_domain_data[1]
@@ -603,7 +609,7 @@ class confounder:
                 #epoch_acc[i] = results
 
                 results["confounder_strength"].append(cf_var)
-                results["model_name"].append(self.model.get_name())
+                results["model_name"].append(self.model.get_name()+self.model_title_add)
                 results["epoch"].append(i+1)
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
