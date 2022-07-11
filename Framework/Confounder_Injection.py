@@ -58,8 +58,8 @@ class plot:
             confounder_strength = results_list[i]["confounder_strength"].iloc[0]
             classification_accuracy = results_list[i].pivot(index="epoch", columns="model_name", values="classification_accuracy")
             confounder_accuracy = results_list[i].pivot(index="epoch", columns="model_name", values="confounder_accuracy")
-            sbs.lineplot(data=classification_accuracy, ax=ax[0][i]).set(title=f"Classification Accuracy\nconfounder strength: {confounder_strength}", ylim=(0.45,1.05))
-            sbs.lineplot(data=confounder_accuracy, ax=ax[1][i]).set(title=f"Confounder Accuracy\nconfounder strength: {confounder_strength}", ylim=(0.45,1.05))
+            sbs.lineplot(data=classification_accuracy, ax=ax[0][i]).set(title=f"Classification Accuracy\n(confounder strength: {confounder_strength})", ylim=(0.45,1.05))
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1][i]).set(title=f"Confounder Accuracy\n(confounder strength: {confounder_strength})", ylim=(0.45,1.05))
         fig.tight_layout()
 
     def accuracy_vs_strength(self, results):
@@ -507,7 +507,8 @@ class train:
 
 class confounder:
     all_results = pd.DataFrame()
-    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False):
+    t = None
+    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False):
         np.random.seed(seed)
         torch.manual_seed(seed)
         self.mode = mode
@@ -530,6 +531,9 @@ class confounder:
         self.index = []
         self.fontsize = 18
         self.model_title_add = ""
+
+        if start_timer:
+            confounder.t = time.time()
 
         if clean_results:
             confounder.all_results= pd.DataFrame()
@@ -738,3 +742,6 @@ class confounder:
         #print(saliency.shape)
         return saliency[0][0]
 
+    def show_time(self):
+        t = time.time() - confounder.t
+        print(f"Computation took {int(t/60)} min and {int(t%60)} s")
