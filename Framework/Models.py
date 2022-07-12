@@ -80,6 +80,8 @@ class LeNet_5(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits, None
 
+    def get_name(self):
+        return "LeNet"
 
 # In[12]:
 
