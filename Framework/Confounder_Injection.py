@@ -398,13 +398,14 @@ class train:
 
         with torch.no_grad():
             for X,label in self.test_dataloader:
-                #X = X.to(self.device)
-                #label.to(self.device)
+                X = X.to(self.device)
+                y = label["y"].to(self.device)
+                conf = label["confounder_labels"].to(self.device)
 
                 class_pred, domain_pred = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
-                classification_accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
-                confounder_accuracy += (class_pred.argmax(1) == label['confounder_labels']).type(torch.float).sum().item()
+                classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
+                confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
         #test_loss /= num_batches
         classification_accuracy /= size
         if confounder_size <= 0:
@@ -422,13 +423,14 @@ class train:
         classification_accuracy, confounder_accuracy = 0, 0
         with torch.no_grad():
             for X,label in self.test_dataloader:
-                #X = X.to(self.device)
-                #label.to(self.device)
+                X = X.to(self.device)
+                y = label["y"].to(self.device)
+                conf = label["confounder_labels"].to(self.device)
 
                 class_pred, domain_pred = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
-                classification_accuracy += (class_pred.argmax(1) == label['y']).type(torch.float).sum().item()
-                confounder_accuracy += (class_pred.argmax(1) == label['confounder_labels']).type(torch.float).sum().item()
+                classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
+                confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
         #test_loss /= num_batches
         classification_accuracy /= size
         if confounder_size <= 0:
@@ -444,12 +446,12 @@ class train:
 
         self.model.train()
         for batch, (X,label) in enumerate(self.train_dataloader):
-            #X = X.to(self.device)
-            #label.to(self.device)
+            X = X.to(self.device)
+            y = label["y"].to(self.device)
 
             # Compute prediction error
             class_pred, domain_pred = self.model(X)
-            loss = self.loss_fn(class_pred, label['y'])
+            loss = self.loss_fn(class_pred, y)
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -473,14 +475,16 @@ class train:
 
         self.model.train()
         for batch, (X,label) in enumerate(self.train_dataloader):
-            #X = X.to(self.device)
+            X = X.to(self.device)
+            y = label["y"].to(self.device)
+            adv = label[adversarial_loss].to(self.device)
 
             # prediction
             class_pred, conf_pred = self.model(X)
 
             # compute error
-            class_loss = class_crossentropy(class_pred, label["y"])
-            domain_loss = domain_crossentropy(conf_pred, label[adversarial_loss])
+            class_loss = class_crossentropy(class_pred, y)
+            domain_loss = domain_crossentropy(conf_pred, adv)
             loss = class_loss + domain_loss
 
             # Backpropagation
@@ -493,11 +497,11 @@ class train:
     def run(self):
         if isinstance(self.model, Models.SimpleConv_DANN) or isinstance(self.model, Models.Br_Net_DANN):
             self.train_adversarial(mode="DANN")
-            accuracy, loss = self.test_DANN()
+            accuracy, loss = self.test()
 
         elif isinstance(self.model, Models.SimpleConv_CF_free) or isinstance(self.model, Models.Br_Net_CF_free):
             self.train_adversarial(mode="CF_free")
-            accuracy, loss = self.test_DANN()
+            accuracy, loss = self.test()
         else:
             self.train_normal()
             accuracy, loss = self.test()
@@ -592,17 +596,25 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cpu", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, alpha=0.5):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
 
+        if device=="cuda":
+            if not torch.cuda.is_available():
+                device="cpu"
+            else:
+                print("CUDA detected")
+
         if hyper_params == None:
             raise AssertionError("Choose some hyperparameter for the optimizer")
+        if not 'weight_decay' in hyper_params:
+            hyper_params['weight_decay'] = 0
 
         for cf_var in self.index:
             self.model = copy.deepcopy(model)
-            model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'])
+            model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
             #epoch_acc = []
             for i in range(0, epochs):
                 # load new resulsts
