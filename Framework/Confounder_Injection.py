@@ -378,10 +378,9 @@ class generator:
 
 
 class train:
-    def __init__(self, mode, model, test_dataloader, train_dataloader, device, optimizer, loss_fn):
+    def __init__(self, mode, model, train_dataloader, device, optimizer, loss_fn):
         self.model = model
         self.mode = mode
-        self.test_dataloader = test_dataloader
         self.train_dataloader = train_dataloader
         self.device = device
         self.loss_fn = loss_fn
@@ -389,15 +388,15 @@ class train:
         self.loss = []
         self.optimizer = optimizer
 
-    def test(self):
-        size = len(self.test_dataloader.dataset)
-        confounder_size = self.test_dataloader.dataset.confounder_size()
-        num_batches = len(self.test_dataloader)
+    def test(self, test_dataloader):
+        size = len(test_dataloader.dataset)
+        confounder_size = test_dataloader.dataset.confounder_size()
+        num_batches = len(test_dataloader)
         self.model.eval()
         classification_accuracy, confounder_accuracy = 0, 0
 
         with torch.no_grad():
-            for X,label in self.test_dataloader:
+            for X,label in test_dataloader:
                 X = X.to(self.device)
                 y = label["y"].to(self.device)
                 conf = label["confounder_labels"].to(self.device)
@@ -497,16 +496,14 @@ class train:
     def run(self):
         if isinstance(self.model, Models.SimpleConv_DANN) or isinstance(self.model, Models.Br_Net_DANN):
             self.train_adversarial(mode="DANN")
-            accuracy, loss = self.test()
 
         elif isinstance(self.model, Models.SimpleConv_CF_free) or isinstance(self.model, Models.Br_Net_CF_free):
             self.train_adversarial(mode="CF_free")
-            accuracy, loss = self.test()
         else:
             self.train_normal()
-            accuracy, loss = self.test()
 
-        return accuracy, loss
+        #accuracy, loss = self.test()
+        return
 
 
 class confounder:
@@ -561,16 +558,25 @@ class confounder:
 
         self.index = test_confounding
 
+        # train data
+        g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
+        g_train_data = g_train.get_data()
+        self.train_x[0,:samples*2] = g_train_data[0]
+        self.train_y[0,:samples*2] = g_train_data[1]
+        self.train_domain_labels[0,:samples*2] = g_train_data[2]
+        self.train_confounder_labels[0,:samples*2] = g_train_data[3]
+
+        # append target domain_labels data to source domain_labels data
+        if target_domain_samples != 0:
+            g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
+            g_target_domain_data =g_target_domain.get_data()
+            self.train_x[0,samples*2:] = g_target_domain_data[0]
+            self.train_y[0,samples*2:] = g_target_domain_data[1]
+            self.train_domain_labels[0,samples*2:] = g_target_domain_data[2]
+            self.train_confounder_labels[0,samples*2:] = g_target_domain_data[3]
+
         i = 0
         for cf_var in test_confounding:
-            # train data
-            g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
-            g_train_data = g_train.get_data()
-            self.train_x[i,:samples*2] = g_train_data[0]
-            self.train_y[i,:samples*2] = g_train_data[1]
-            self.train_domain_labels[i,:samples*2] = g_train_data[2]
-            self.train_confounder_labels[i,:samples*2] = g_train_data[3]
-
             # test data
             g_test = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=cf_var, params=params, domain=0, de_correlate_confounder=de_correlate_confounder_test)
             g_test_data =g_test.get_data()
@@ -579,14 +585,6 @@ class confounder:
             self.test_domain_labels[i] = g_test_data[2]
             self.test_confounder_labels[i] = g_test_data[3]
 
-            # append target domain_labels data to source domain_labels data
-            if target_domain_samples != 0:
-                g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
-                g_target_domain_data =g_target_domain.get_data()
-                self.train_x[i,samples*2:] = g_target_domain_data[0]
-                self.train_y[i,samples*2:] = g_target_domain_data[1]
-                self.train_domain_labels[i,samples*2:] = g_target_domain_data[2]
-                self.train_confounder_labels[i,samples*2:] = g_target_domain_data[3]
 
             i += 1
 
@@ -612,26 +610,26 @@ class confounder:
         if not 'weight_decay' in hyper_params:
             hyper_params['weight_decay'] = 0
 
-        for cf_var in self.index:
-            self.model = copy.deepcopy(model)
-            model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
-            #epoch_acc = []
-            for i in range(0, epochs):
-                # load new resulsts
-                self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
-                self.test_dataloader = create_dataloader(self.test_x[set],self.test_y[set], domain=self.test_domain_labels[set], confounder=self.test_confounder_labels[set], batch_size=batch_size).get_dataloader()
-                t = train(self.mode, self.model, self.test_dataloader, self.train_dataloader, device, model_optimizer, loss_fn)
-                classification_accuracy, confounder_accuracy = t.run()
-                #epoch_acc[i] = results
+        self.model = copy.deepcopy(model)
+        model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
 
-                results["confounder_strength"].append(cf_var)
+        for i in range(0, epochs):
+            # load new results
+            self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
+            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, loss_fn)
+            t.run()
+
+            for cf_var in range(0,len(self.index)):
+                test_dataloader = create_dataloader(self.test_x[cf_var],self.test_y[cf_var], domain=self.test_domain_labels[cf_var], confounder=self.test_confounder_labels[cf_var], batch_size=batch_size).get_dataloader()
+                classification_accuracy, confounder_accuracy = t.test(test_dataloader)
+
+                results["confounder_strength"].append(self.index[cf_var])
                 results["model_name"].append(self.model.get_name()+self.model_title_add)
                 results["epoch"].append(i+1)
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
 
-            set += 1
 
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
