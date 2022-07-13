@@ -12,9 +12,7 @@ import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
-import random
 from sklearn.manifold import TSNE
-import warnings
 import seaborn as sbs
 import seaborn_image as sbsi
 import time
@@ -25,7 +23,9 @@ from Framework import Models
 import warnings
 import pandas as pd
 import ipywidgets as widgets
-from ipywidgets import interact, interactive, fixed, interact_manual
+from ipywidgets import interact, fixed
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
 
 
 
@@ -190,7 +190,7 @@ class create_dataloader:
         #train_dataset, test_dataset = self.split_dataset(dataset)
         # TODO delete unnecessary stuff
         # create DataLoader
-        train_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        train_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0, pin_memory=True)
         #test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size,shuffle=True)
 
         return train_dataloader
@@ -509,11 +509,12 @@ class train:
 class confounder:
     all_results = pd.DataFrame()
     t = None
-    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False):
+    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False):
+        torch.backends.cudnn.benchmark = True
         np.random.seed(seed)
         torch.manual_seed(seed)
         self.mode = mode
-        self.test_dataloader = None
+        self.test_dataloader = []
         self.train_dataloader = None
 
         self.train_x = None
@@ -532,6 +533,7 @@ class confounder:
         self.index = []
         self.fontsize = 18
         self.model_title_add = ""
+        self.tune = tune
 
         if start_timer:
             confounder.t = time.time()
@@ -612,22 +614,30 @@ class confounder:
 
         self.model = copy.deepcopy(model)
         model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
+        self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
+        for cf_var in range(0,len(self.index)):
+            self.test_dataloader.append(create_dataloader(self.test_x[cf_var],self.test_y[cf_var], domain=self.test_domain_labels[cf_var], confounder=self.test_confounder_labels[cf_var], batch_size=batch_size).get_dataloader())
 
         for i in range(0, epochs):
             # load new results
-            self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
+
             t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, loss_fn)
             t.run()
 
             for cf_var in range(0,len(self.index)):
-                test_dataloader = create_dataloader(self.test_x[cf_var],self.test_y[cf_var], domain=self.test_domain_labels[cf_var], confounder=self.test_confounder_labels[cf_var], batch_size=batch_size).get_dataloader()
-                classification_accuracy, confounder_accuracy = t.test(test_dataloader)
+                classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[cf_var])
 
                 results["confounder_strength"].append(self.index[cf_var])
                 results["model_name"].append(self.model.get_name()+self.model_title_add)
                 results["epoch"].append(i+1)
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
+
+
+                # register accuracy in tune
+                if self.tune:
+                    assert(len(self.index==1))
+                    tune.report(mean_accuracy=classification_accuracy)
 
 
 
@@ -640,6 +650,39 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
+
+    def train_tune(self, config):
+        #model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
+        assert(len(self.index)==1)
+        if config["device"]=="cuda":
+            if not torch.cuda.is_available():
+                device="cpu"
+            else:
+                print("CUDA detected")
+
+        self.model = copy.deepcopy(config["model"])
+
+        if "alpha" in config.keys():
+            try:
+                self.model.alpha = config["alpha"]
+            except:
+                pass
+
+        model_optimizer = config["optimizer"](params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
+        self.train_dataloader = create_dataloader(self.train_x[0],self.train_y[0], domain=self.train_domain_labels[0], confounder=self.train_confounder_labels[0], batch_size=config["batch_size"]).get_dataloader()
+        self.test_dataloader.append(create_dataloader(self.test_x[0],self.test_y[0], domain=self.test_domain_labels[0], confounder=self.test_confounder_labels[0], batch_size=config["batch_size"]).get_dataloader())
+
+        for i in range(0, config["epochs"]):
+            # load new results
+
+            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, config["loss_fn"])
+            t.run()
+
+            classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[0])
+
+            tune.report(mean_accuracy=classification_accuracy)
+
+        return
 
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False):
