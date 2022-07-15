@@ -625,7 +625,7 @@ class confounder:
             "weight_decay": hyper_params["weight_decay"]
         }
 
-        wandb.init(name=name, entity="confounder_in_ml", project="test_project", config=config)
+        wandb.init(name=name, entity="confounder_in_ml", config=config)
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
@@ -657,7 +657,7 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy })
+                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength": self.index[cf_var]})
 
                 # register accuracy in tune
                 if self.tune:
