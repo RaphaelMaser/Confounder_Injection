@@ -24,16 +24,20 @@ params = [
 ]
 
 e = datetime.datetime.now()
+max_t = 500
+samples = 2000
+target_domain_samples = 16
+max_concurrent_trials = 28
 
 search_space = {
     "model":None,
     "device":"cuda",
     "loss_fn":nn.CrossEntropyLoss(),
     "epochs":500,
-    "batch_size": tune.choice([32,64,128,256]),
+    "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
 
-    "alpha":tune.uniform(0,1),
+    "alpha":None,
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-5,1e-1),
     "wandb": {
@@ -41,13 +45,9 @@ search_space = {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
         "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}","16 target samples"],
-        "name": "BrNet 16 target samples"
+        "name": f"BrNet {target_domain_samples} target samples"
     },
 }
-max_t = 500
-samples = 2000
-target_domain_samples = 16
-max_concurrent_trials = 28
 
 
 ##
@@ -68,6 +68,7 @@ c = CI.confounder()
 model = Models.Br_Net_CF_free(alpha=None)
 search_space["model"] = model
 search_space["wandb"]["group"] = "BrNet CF free"
+search_space["alpha"] = tune.uniform(0,1)
 
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
