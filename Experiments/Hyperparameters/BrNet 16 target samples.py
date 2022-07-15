@@ -40,11 +40,12 @@ search_space = {
         "api_key": "10dd47062950e00af63d29317ead0331316732ff",
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
-        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}","16 target samples"]
+        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}","16 target samples"],
+        "name": "BrNet 16 target samples"
     },
 }
 max_t = 500
-samples = 30
+samples = 2000
 target_domain_samples = 16
 max_concurrent_trials = 28
 
@@ -56,6 +57,7 @@ search_space["model"] = model
 search_space["wandb"]["group"] = "BrNet"
 
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+#c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 
 reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
 analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t), max_concurrent_trials=max_concurrent_trials)
