@@ -607,11 +607,12 @@ class confounder:
         if self.conditioning != -1:
             name += f"{self.conditioning}"
 
-        if device=="cuda":
-            if not torch.cuda.is_available():
-                device="cpu"
-            else:
+        if device is "cuda":
+            if torch.cuda.is_available():
                 print("CUDA detected")
+            else:
+                device="cpu"
+
 
         config = {
             "model":name,

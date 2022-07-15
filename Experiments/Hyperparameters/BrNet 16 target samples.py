@@ -6,39 +6,91 @@ import importlib
 importlib.reload(Models)
 importlib.reload(CI)
 import torch
-import argparse
-
-# parse arguments
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument("--lr", type=float)
-parser.add_argument("--batch_size", type=int)
-parser.add_argument("--weight_decay", type=float)
-parser.add_argument("--alpha", type=float)
-arguments = parser.parse_args()
+import pandas as pd
+import numpy as np
+import seaborn as sbs
+import matplotlib.pyplot as plt
+import time
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+from torch import nn
+from ray.tune import CLIReporter
+import wandb
+import datetime
 
 params = [
     [[1, 4], [3, 6]], # real feature
     [[10, 12], [20, 22]] # confounder
 ]
 
-epochs = 100
-batch_size = arguments.batch_size
-hyperparams = {
-    "lr": arguments.lr,
-    "weight_decay": arguments.weight_decay
+e = datetime.datetime.now()
+
+search_space = {
+    "model":None,
+    "device":"cuda",
+    "loss_fn":nn.CrossEntropyLoss(),
+    "epochs":500,
+    "batch_size": tune.choice([32,64,128,256]),
+    "optimizer":torch.optim.Adam,
+
+    "alpha":tune.uniform(0,1),
+    "lr": tune.loguniform(1e-5,1e-1),
+    "weight_decay": tune.loguniform(1e-5,1e-1),
+    "wandb": {
+        "api_key": "10dd47062950e00af63d29317ead0331316732ff",
+        "entity": "confounder_in_ml",
+        "project": "Hyperparameters",
+        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}"]
+    },
 }
-alpha = arguments.alpha
-#wandb.init(name="name", entity="confounder_in_ml", project="test_project", group="hyperparameters")
+max_t = 500
+samples = 30
+target_domain_samples = 16
 
+
+##
 c = CI.confounder()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+model = Models.Br_Net()
+search_space["model"] = model
+search_space["wandb"]["group"] = "BrNet"
 
-#wandb.init(name="name", entity="confounder_in_ml", project="test_project")
-c.train(model=Models.Br_Net(), epochs=epochs, device="cpu", optimizer=torch.optim.Adam, batch_size=batch_size, hyper_params=hyperparams)
-#c.train(model=Models.Br_Net_CF_free(alpha), epochs=epochs, device="cpu", optimizer=torch.optim.Adam, batch_size=batch_size, hyper_params=hyperparams)
-#c.train(model=Models.Br_Net_DANN(alpha), epochs=epochs, device="cpu", optimizer=torch.optim.Adam, batch_size=batch_size, hyper_params=hyperparams)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
-#c = CI.confounder()
-#c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
-#c.train(model=Models.Br_Net_CF_free(alpha), epochs=epochs, device="cpu", optimizer=torch.optim.Adam, batch_size=batch_size, hyper_params=hyperparams)
+reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t))
 
+
+##
+c = CI.confounder()
+model = Models.Br_Net_CF_free(alpha=None)
+search_space["model"] = model
+search_space["wandb"]["group"] = "BrNet CF free"
+
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+
+reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t))
+
+
+##
+c = CI.confounder()
+model = Models.Br_Net_CF_free(alpha=None)
+search_space["model"] = model
+search_space["wandb"]["group"] = "BrNet CF free conditioning=0"
+
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
+
+reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t))
+
+
+##
+c = CI.confounder()
+model = Models.Br_Net_DANN(alpha=None)
+search_space["model"] = model
+search_space["wandb"]["group"] = "BrNet DANN"
+
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+
+reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t))
