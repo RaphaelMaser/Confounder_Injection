@@ -26,7 +26,7 @@ import ipywidgets as widgets
 from ipywidgets import interact, fixed
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
-
+import wandb
 
 
 
@@ -509,7 +509,7 @@ class train:
 class confounder:
     all_results = pd.DataFrame()
     t = None
-    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False):
+    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
         torch.backends.cudnn.benchmark = True
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -534,6 +534,7 @@ class confounder:
         self.fontsize = 18
         self.model_title_add = ""
         self.tune = tune
+        self.name = name
 
         if start_timer:
             confounder.t = time.time()
@@ -554,6 +555,7 @@ class confounder:
         self.test_domain_labels = np.empty((iterations,samples*2))
         self.train_confounder_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
         self.test_confounder_labels = np.empty((iterations,samples*2))
+        self.conditioning = conditioning
 
         if conditioning != -1:
             self.model_title_add = f"(conditioning={conditioning})"
@@ -597,15 +599,33 @@ class confounder:
 
 
     def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
-        delta_t = time.time()
-        set = 0
-        results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
+        name = model.get_name()
+        if self.conditioning != -1:
+            name += f"{self.conditioning}"
 
         if device=="cuda":
             if not torch.cuda.is_available():
                 device="cpu"
             else:
                 print("CUDA detected")
+
+        config = {
+            "model":name,
+            "epochs":epochs,
+            "device": device,
+            "optimizer": optimizer,
+            "loss_fn": loss_fn,
+            "batch_size": batch_size,
+            "alpha": model.alpha,
+            "lr": hyper_params["lr"],
+            "weight_decay": hyper_params["weight_decay"]
+        }
+
+        wandb.init(name=name, entity="confounder_in_ml", project="test_project", config=config)
+        delta_t = time.time()
+        set = 0
+        results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
+
 
         if hyper_params == None:
             raise AssertionError("Choose some hyperparameter for the optimizer")
@@ -633,6 +653,7 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
+                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy })
 
                 # register accuracy in tune
                 if self.tune:
