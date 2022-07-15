@@ -28,6 +28,10 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import wandb
 
+from ray.tune.integration.wandb import (
+    WandbTrainableMixin,
+    wandb_mixin,
+)
 
 
 warnings.filterwarnings("ignore",category=FutureWarning)
@@ -672,6 +676,7 @@ class confounder:
 
         return self.results
 
+    @wandb_mixin
     def train_tune(self, config):
         #model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
         assert(len(self.index)==1)
@@ -702,7 +707,7 @@ class confounder:
             classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[0])
 
             tune.report(mean_accuracy=classification_accuracy)
-
+            wandb.log({"classification_accuracy": classification_accuracy, "confounder_accuracy": confounder_accuracy})
         return
 
 

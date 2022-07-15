@@ -5,6 +5,7 @@ from Framework.Layers import GradientReversal
 class NeuralNetwork(nn.Module):
     def __init__(self, input_size):
         super(NeuralNetwork, self).__init__()
+        self.alpha = None
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(input_size, 512),
@@ -90,6 +91,7 @@ class LeNet_5(nn.Module):
 class Br_Net(nn.Module):
     def __init__(self):
         super(Br_Net, self).__init__()
+        self.alpha = None
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 2, kernel_size=3),
             nn.Tanh(),
