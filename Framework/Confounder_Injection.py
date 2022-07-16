@@ -611,7 +611,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb={}):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb={"project": "None", "group": "None", "tags": []}):
         name = model.get_name()
         if self.conditioning != -1:
             name += f"{self.conditioning}"
