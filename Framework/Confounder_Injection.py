@@ -560,6 +560,15 @@ class confounder:
         self.train_confounder_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
         self.test_confounder_labels = np.empty((iterations,samples*2))
         self.conditioning = conditioning
+        self.samples = samples
+        self.target_domain_samples = target_domain_samples
+        self.overlap = overlap
+        self.train_confounding = train_confounding
+        self.test_confounding = test_confounding
+        self.target_domain_confounding = target_domain_confounding
+        self.de_correlate_confounder_test = de_correlate_confounder_test
+        self.de_correlate_confounder_target =de_correlate_confounder_target
+        self.params = params
 
         if conditioning != -1:
             self.model_title_add = f"(conditioning={conditioning})"
@@ -602,7 +611,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb={}):
         name = model.get_name()
         if self.conditioning != -1:
             name += f"{self.conditioning}"
@@ -623,10 +632,19 @@ class confounder:
             "batch_size": batch_size,
             "alpha": model.alpha,
             "lr": hyper_params["lr"],
-            "weight_decay": hyper_params["weight_decay"]
+            "weight_decay": hyper_params["weight_decay"],
+            "samples": self.samples,
+            "target_domain_samples": self.target_domain_samples,
+            "overlap": self.overlap,
+            "train_confounding": self.train_confounding,
+            "test_confounding": self.test_confounding,
+            "target_domain_confounding": self.target_domain_confounding,
+            "de_correlate_confounder_test": self.de_correlate_confounder_test,
+            "de_correlate_confounder_target": self.de_correlate_confounder_target,
+            "params": self.params,
         }
 
-        wandb.init(name=name, entity="confounder_in_ml", config=config)
+        wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb["project"], group=wandb["group"], tags=wandb["tags"])
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}

@@ -26,7 +26,7 @@ params = [
 e = datetime.datetime.now()
 max_t = 5000
 samples = 2000
-target_domain_samples = 16
+target_domain_samples = 128
 max_concurrent_trials = 64
 
 search_space = {
@@ -44,7 +44,7 @@ search_space = {
         "api_key": "10dd47062950e00af63d29317ead0331316732ff",
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
-        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}","16 target samples"],
+        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}"],
         "name": f"BrNet {target_domain_samples} target samples"
     },
 }
