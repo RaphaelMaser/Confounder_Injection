@@ -27,7 +27,7 @@ e = datetime.datetime.now()
 max_t = 1000
 samples = 1000
 target_domain_samples = 16
-max_concurrent_trials = 64
+max_concurrent_trials = 32
 
 search_space = {
     "model":None,

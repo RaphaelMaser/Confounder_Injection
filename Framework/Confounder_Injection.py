@@ -616,7 +616,7 @@ class confounder:
         if self.conditioning != -1:
             name += f"{self.conditioning}"
 
-        if device is "cuda":
+        if device == "cuda":
             if torch.cuda.is_available():
                 print("CUDA detected")
             else:
