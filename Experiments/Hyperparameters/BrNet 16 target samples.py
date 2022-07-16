@@ -24,8 +24,8 @@ params = [
 ]
 
 e = datetime.datetime.now()
-max_t = 5000
-samples = 2000
+max_t = 1000
+samples = 1000
 target_domain_samples = 16
 max_concurrent_trials = 64
 
@@ -39,7 +39,7 @@ search_space = {
 
     "alpha":None,
     "lr": tune.loguniform(1e-5,1e-1),
-    "weight_decay": tune.loguniform(1e-5,1e-1),
+    "weight_decay": tune.loguniform(1e-6,1e-1),
     "wandb": {
         "api_key": "10dd47062950e00af63d29317ead0331316732ff",
         "entity": "confounder_in_ml",
