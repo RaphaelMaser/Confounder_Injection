@@ -156,6 +156,45 @@ class Br_Net_CF_free(nn.Module):
     def get_name(self):
         return "BrNet_CF_free"
 
+class Br_Net_CF_free_conditioned(nn.Module):
+    def __init__(self, alpha):
+        super(Br_Net_CF_free_conditioned, self).__init__()
+        self.alpha = alpha
+        self.linear_relu_stack = nn.Sequential(
+            nn.Conv2d(1, 2, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(2, 4,kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Conv2d(4, 8, kernel_size=3),
+            nn.Tanh(),
+            nn.MaxPool2d(kernel_size=2),
+
+            nn.Flatten(),
+        )
+
+        self.class_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+        self.domain_predictor = nn.Sequential(
+            nn.Linear(32,2)
+        )
+
+    def forward(self, x):
+        features = self.linear_relu_stack(x)
+        reverse_features = GradientReversal.apply(features, self.alpha)
+
+        class_features = self.class_predictor(features)
+        domain_features = self.domain_predictor(reverse_features)
+        return class_features, domain_features
+
+    def get_name(self):
+        return "BrNet_CF_free_conditioned"
+
 class Br_Net_DANN(nn.Module):
     def __init__(self, alpha):
         super(Br_Net_DANN, self).__init__()

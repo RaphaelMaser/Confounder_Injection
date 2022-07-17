@@ -611,7 +611,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb={"project": "None", "group": "None", "tags": []}):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init={}):
         name = model.get_name()
         if self.conditioning != -1:
             name += f"{self.conditioning}"
@@ -622,6 +622,12 @@ class confounder:
             else:
                 device="cpu"
 
+        if "project" not in wandb_init:
+            wandb_init["project"] = "None"
+        if "group" not in wandb_init:
+            wandb_init["group"] = "None"
+        if "tags" not in wandb_init:
+            wandb_init["tags"] = []
 
         config = {
             "model":name,
@@ -644,7 +650,7 @@ class confounder:
             "params": self.params,
         }
 
-        wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb["project"], group=wandb["group"], tags=wandb["tags"])
+        wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], tags=wandb_init["tags"])
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
