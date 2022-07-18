@@ -44,7 +44,7 @@ search_space = {
         "api_key": "10dd47062950e00af63d29317ead0331316732ff",
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
-        "tags": [f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}"],
+        "tags": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
         "name": f"BrNet {target_domain_samples} target samples"
     },
 }

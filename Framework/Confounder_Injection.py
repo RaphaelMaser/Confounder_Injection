@@ -611,8 +611,9 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init={}):
+    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=dict()):
         name = model.get_name()
+
         if self.conditioning != -1:
             name += f"{self.conditioning}"
 
@@ -626,8 +627,8 @@ class confounder:
             wandb_init["project"] = "None"
         if "group" not in wandb_init:
             wandb_init["group"] = "None"
-        if "tags" not in wandb_init:
-            wandb_init["tags"] = []
+        if "time" not in wandb_init:
+            wandb_init["time"] = "None"
 
         config = {
             "model":name,
@@ -648,9 +649,10 @@ class confounder:
             "de_correlate_confounder_test": self.de_correlate_confounder_test,
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
+            "date": wandb_init["time"]
         }
 
-        wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], tags=wandb_init["tags"])
+        wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"])
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
@@ -682,7 +684,8 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength": self.index[cf_var]})
+                #wandb.config.update({"confounder_strength":self.index[cf_var]}, allow_val_change=True)
+                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i})
 
                 # register accuracy in tune
                 if self.tune:
@@ -690,7 +693,7 @@ class confounder:
                     tune.report(mean_accuracy=classification_accuracy)
 
 
-
+        wandb.finish()
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
         #confounder.all_results.append(self.results)

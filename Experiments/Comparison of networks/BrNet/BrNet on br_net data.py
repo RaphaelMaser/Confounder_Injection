@@ -24,7 +24,7 @@ params = [
 
 epochs = 10000
 e = datetime.datetime.now()
-t = f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}"
+t = f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"
 
 # In "Validation of synthetic data" the case were the training_data was completely confounded was tested to show that neural networks indeed fit to confounding factors in images. Now the hypothesis is that if we have a small set of unconfounded data we can either use a confounder-free neural network or a DANN to unlearn the confounders. For establishing a performance baseline we need to test the SimpleConv on a dataset consisting of the confounded set and the small unconfounded set, otherwise the conditions would not be equal for the different networks.
 
@@ -40,7 +40,7 @@ t = f"{e.day}.{e.month}.{e.year} {e.hour}:{e.minute}:{e.second}"
 
 wandb_init = {
     "project": "BrNet on br_net data",
-    "tags": [t],
+    "time": t,
     "group": "BrNet",
 }
 
@@ -66,7 +66,7 @@ BrNet_DANN_hyperparams = {
 
 c = CI.confounder(clean_results=True, start_timer=True)
 model = Models.Br_Net()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=64, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
 
 
