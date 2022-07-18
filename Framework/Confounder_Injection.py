@@ -27,6 +27,7 @@ from ipywidgets import interact, fixed
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import wandb
+import ast
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -139,6 +140,69 @@ class plot:
     def confounding_impact(self,x):
         sbs.lineplot(x)
         return
+
+class plot_from_csv:
+    def __init__(self, fontsize=18):
+        self.fontsize = fontsize
+        pass
+
+    # if None then newest is taken
+    def accuracy_vs_epoch(self, project_csv_path, config_filter, groupby):
+        df_list = self.convert_and_filter_df(project_csv_path, config_filter)
+        title = ""
+        for cf in config_filter:
+            title = f"{title} \n {cf}={config_filter[cf]}"
+        fig, ax = plt.subplots(1,2,figsize=(8*2,6))
+        fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
+        #model_name = df["model"]
+
+        for df in df_list:
+            #name = df["model"][0]
+            classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
+            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
+
+            sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+
+        plt.tight_layout()
+        return
+
+
+
+    def convert_and_filter_df(self, project_csv_path, config_filter):
+        project_df = pd.read_json(project_csv_path)
+
+        # filter data
+        merged_dfs = []
+        for i in range(0,len(project_df["config"])):
+
+            history_dict = {}
+            for h in project_df["history"][i]:
+                history_dict[h] = project_df["history"][i][h]
+                #print(run_dict)
+
+            config_dict = {}
+            for c in project_df["config"][i]:
+                config_dict[c] = {k:project_df["config"][i][c] for k in range(0,len(project_df["history"].iloc[0]["confounder_accuracy"]))}
+                #print({k:project_df["config"][i][c] for k in range(len(project_df["history"].iloc[0]))})
+            #print(run_dict)
+            history_frame = pd.DataFrame.from_dict(history_dict)
+            config_frame = pd.DataFrame.from_dict(config_dict)
+            #history_frame.to_csv("history.csv")
+            #config_frame.to_csv("config.csv")
+            merged_dfs.append(pd.concat([history_frame.reset_index(drop=True), config_frame.reset_index(drop=True)], axis=1))
+            #merged_dfs.append(pd.concat([history_frame, config_frame], axis=1, ignore_index=True))
+            #merged_dfs.append(history_frame+config_frame)
+
+        filtered_dfs = []
+        for df in merged_dfs:
+            for cf in config_filter:
+                df = df[df[cf] == config_filter[cf]]
+            if not df.empty:
+                filtered_dfs.append(df)
+
+
+        return filtered_dfs
 
 
 class CfDataset(torch.utils.data.Dataset):
@@ -692,7 +756,7 @@ class confounder:
                     assert(len(self.index==1))
                     tune.report(mean_accuracy=classification_accuracy)
 
-
+        wandb.config.update({"trained_model": self.model},allow_val_change=True)
         wandb.finish()
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
@@ -790,6 +854,57 @@ class confounder:
                 p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad\nstrength={self.index[i]}", model_name=model_name)
 
 
+    def plot_wandb(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False):
+        p = plot()
+        model_name = self.model.get_name()
+
+        if accuracy_vs_epoch:
+            p.accuracy_vs_epoch(self.results)
+
+        # if accuracy_vs_strength:
+        #     p.accuracy_vs_strength(self.results)
+        #
+        # if plot_all:
+        #     p.accuracy_vs_epoch_all(confounder.all_results)
+        #
+        # if tsne:
+        #     if len(self.train_x) > 1:
+        #         print("There are multiple arrays of data. Only showing the first one.")
+        #     p.tsne(self.train_x[0], self.train_y[0], 2)
+        #
+        # if image:
+        #     if len(self.train_x) > 1:
+        #         print("There are multiple arrays of data. Only showing the first one.")
+        #     p.image(self.train_x[0][0])
+        #
+        # if image_slider != None:
+        #     p.image_slider(self.train_x[image_slider])
+        #
+        # if train_images:
+        #     for i in test_image_iteration:
+        #         x = self.train_x[i]
+        #         p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Train-images (iteration {i})", model_name=model_name)
+        #
+        # if test_images:
+        #     for i in test_image_iteration:
+        #         x = self.test_x[i]
+        #         p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})", model_name=model_name)
+        #
+        # if saliency:
+        #     for i in saliency_iteration:
+        #         saliency_class_0 = self.saliency_map(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+        #         saliency_class_1 = self.saliency_map(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
+        #
+        #         p.images([saliency_class_0, saliency_class_1], title=f"Saliency map\nstrength={self.index[i]}", model_name=model_name)
+        #
+        # if smoothgrad:
+        #     for i in saliency_iteration:
+        #         saliency_class_0 = self.smoothgrad(saliency_class=0, saliency_sample=saliency_sample, saliency_iteration=i)
+        #         saliency_class_1 = self.smoothgrad(saliency_class=1, saliency_sample=saliency_sample, saliency_iteration=i)
+        #
+        #         p.images([saliency_class_0, saliency_class_1], title=f"SmoothGrad\nstrength={self.index[i]}", model_name=model_name)
+
+
     def smoothgrad(self, saliency_class=0, saliency_sample=0, saliency_iteration=None):
         N = 100
         noise = 0.20
@@ -852,3 +967,41 @@ class confounder:
     def show_time(self):
         t = time.time() - confounder.t
         print(f"Computation took {int(t/60)} min and {int(t%60)} s")
+
+def sync_wandb_data(project=None):
+    assert(project is not None)
+    entity = "confounder_in_ml"
+    project = "BrNet on br_net data"
+
+    api = wandb.Api()
+    runs = api.runs(entity + "/" + project)
+
+    history_list, config_list, name_list = [], [], []
+    for run in runs:
+        # .summary contains the output keys/values for metrics like accuracy.
+        #  We call ._json_dict to omit large files
+        history_list.append(run.history())
+
+        # .config contains the hyperparameters.
+        #  We remove special values that start with _.
+        config_list.append(
+            {k: v for k,v in run.config.items()
+             if not k.startswith('_')})
+
+        # .name is the human-readable name of the run.
+        name_list.append(run.name)
+    history_dict = [hl.to_dict() for hl in history_list]
+
+    #print(history_dict)
+    #print("\n\n")
+    #print(history_dict)
+    runs_df = pd.DataFrame({
+        "history": history_dict,
+        "config": config_list,
+        "name": name_list
+    })
+
+    runs_df.to_csv(f"{project}.csv")
+    runs_df.to_pickle(f"{project}.pkl")
+    runs_df.to_json(f"{project}.json")
+
