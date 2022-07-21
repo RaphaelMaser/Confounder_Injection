@@ -698,7 +698,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
+    def train(self, tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
         name = model.get_name()
 
         if self.conditioning != -1:
@@ -779,7 +779,7 @@ class confounder:
 
                 # register accuracy in tune
                 if self.tune:
-                    assert(len(self.index==1))
+                    assert(len(self.index)==1)
                     tune.report(mean_accuracy=classification_accuracy)
 
         if wandb_init != None:
@@ -795,38 +795,10 @@ class confounder:
 
         return self.results
 
-    @wandb_mixin
+
     def train_tune(self, config):
-        #model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None):
-        assert(len(self.index)==1)
-        if config["device"]=="cuda":
-            if not torch.cuda.is_available():
-                device="cpu"
-            else:
-                print("CUDA detected")
+        self.train(tune=True, model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
-        self.model = copy.deepcopy(config["model"])
-
-        if "alpha" in config.keys():
-            try:
-                self.model.alpha = config["alpha"]
-            except:
-                pass
-
-        model_optimizer = config["optimizer"](params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[0],self.train_y[0], domain=self.train_domain_labels[0], confounder=self.train_confounder_labels[0], batch_size=config["batch_size"]).get_dataloader()
-        self.test_dataloader.append(create_dataloader(self.test_x[0],self.test_y[0], domain=self.test_domain_labels[0], confounder=self.test_confounder_labels[0], batch_size=config["batch_size"]).get_dataloader())
-
-        for i in range(0, config["epochs"]):
-            # load new results
-
-            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, config["loss_fn"])
-            t.run()
-
-            classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[0])
-
-            tune.report(mean_accuracy=classification_accuracy)
-            wandb.log({"classification_accuracy": classification_accuracy, "confounder_accuracy": confounder_accuracy})
         return
 
 
