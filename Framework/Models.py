@@ -33,6 +33,7 @@ class NeuralNetwork(nn.Module):
 class SimpleConv(nn.Module):
     def __init__(self):
         super(SimpleConv, self).__init__()
+        self.alpha = None
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
             nn.ReLU(),

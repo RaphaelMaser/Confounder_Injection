@@ -22,7 +22,7 @@ params = [
     [[10, 12], [20, 22]] # confounder
     ]
 
-epochs = 10000
+epochs = 1000
 e = datetime.datetime.now()
 t = f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"
 
@@ -64,6 +64,10 @@ BrNet_DANN_hyperparams = {
     "alpha": 0.7,
 }
 
+
+#
+# CONFOUNDERS IN TRAINING BUT NOT IN TEST DATA
+#
 c = CI.confounder(clean_results=True, start_timer=True)
 model = Models.Br_Net()
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
