@@ -24,12 +24,13 @@ params = [
 ]
 
 e = datetime.datetime.now()
-samples = 1000
+epochs = 10000
+samples = 10000
 target_domain_samples = 16
-max_concurrent_trials = 2#32
+max_concurrent_trials = 32
 
 search_space = {
-    "epochs":samples,
+    "epochs":epochs,
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
 
@@ -55,7 +56,7 @@ c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=tar
 #c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 
 reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 #scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t),
 
 
@@ -69,7 +70,7 @@ search_space["alpha"] = tune.uniform(0,1)
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
 reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
@@ -81,7 +82,7 @@ search_space["model"] = model
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
 
 reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
@@ -93,4 +94,4 @@ search_space["model"] = model
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
 reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)
+analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
