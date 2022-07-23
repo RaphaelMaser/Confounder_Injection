@@ -37,6 +37,11 @@ search_space = {
     "alpha":None,
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-6,1e-1),
+    "wandb" : {
+        "entity": "confounder_in_ml",
+        "project": "Hyperparameters",
+        "group": "BrNet",
+    },
     "wandb_init" : {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
@@ -64,7 +69,7 @@ analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter
 c = CI.confounder()
 model = Models.Br_Net_CF_free(alpha=None)
 search_space["model"] = model
-#search_space["wandb_init"]["group"] = "BrNet CF free"
+search_space["wandb_init"]["group"] = "BrNet CF free"
 search_space["alpha"] = tune.uniform(0,1)
 
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
@@ -77,7 +82,7 @@ analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter
 c = CI.confounder()
 model = Models.Br_Net_CF_free(alpha=None)
 search_space["model"] = model
-#search_space["wandb_init"]["group"] = "BrNet CF free conditioning=0"
+search_space["wandb_init"]["group"] = "BrNet CF free conditioning=0"
 
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
 
@@ -89,7 +94,7 @@ analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter
 c = CI.confounder()
 model = Models.Br_Net_DANN(alpha=None)
 search_space["model"] = model
-#search_space["wandb_init"]["group"] = "BrNet DANN"
+search_space["wandb_init"]["group"] = "BrNet DANN"
 
 c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 

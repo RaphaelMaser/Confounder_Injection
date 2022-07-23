@@ -698,7 +698,7 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device = "cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
         name = model.get_name()
 
         if self.conditioning != -1:
@@ -777,8 +777,8 @@ class confounder:
                 if wandb_init != None:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1})
 
-                # register accuracy in tune
-                if self.tune:
+                # register accuracy in use_tune
+                if use_tune:
                     assert(len(self.index)==1)
                     tune.report(mean_accuracy=classification_accuracy)
 
@@ -795,9 +795,10 @@ class confounder:
 
         return self.results
 
-
+    #@wandb_mixin
     def train_tune(self, config):
-        self.train(tune=True, model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+        config["model"].alpha = config["alpha"]
+        self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
         return
 
