@@ -25,7 +25,7 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 10000
+samples = 500
 target_domain_samples = 16
 max_concurrent_trials = 32
 
