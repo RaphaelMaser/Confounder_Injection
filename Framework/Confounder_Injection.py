@@ -67,9 +67,9 @@ class plot:
             sbs.lineplot(data=confounder_accuracy, ax=ax[1][i]).set(title=f"Confounder Accuracy\n(confounder strength: {confounder_strength})", ylim=(0.45,1.05))
         fig.tight_layout()
 
-    def accuracy_vs_strength(self, results):
+    def accuracy_vs_strength(self, results, n_classes=2, ideal=False):
         #print(results)
-        fig, ax = plt.subplots(1,1,figsize=(8,4))
+        fig, ax = plt.subplots(1,1,figsize=(8,6))
         fig.suptitle("Accuracy vs Strength", fontsize=self.fontsize)
         model_name = results["model_name"][0]
 
@@ -78,8 +78,13 @@ class plot:
 
         class_max_acc = classification_accuracy.max(axis='rows')
         class_mean_acc = classification_accuracy.mean(axis='rows')
-        class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
-        sbs.lineplot(data=class_max_and_mean_acc, markers=True).set(title=f"{model_name}\nClassification Accuracy", ylim=(0.45,1.05))
+        if ideal:
+            ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
+            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc, "theoretic upper bound":ideal_df}, axis='columns')
+        else:
+            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
+
+        s = sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))
         plt.tight_layout()
         #conf_max_acc = confounder_accuracy.max(axis='rows')
         #conf_mean_acc = confounder_accuracy.mean(axis='rows')
@@ -249,6 +254,7 @@ class CfDataset(torch.utils.data.Dataset):
         confounder_samples = self.confounder[self.confounder != -1]
         return len(confounder_samples)
 
+
 class create_dataloader:
     def __init__(self, x=None, y=None, domain=None, confounder=None, batch_size=1):
         #assert(x != None and y != None)
@@ -312,16 +318,8 @@ class generator:
 
     def br_net(self, params=None):
         N = self.samples # number of subjects in a group
-
-        self.domain_labels = np.full((N*2), self.domain)
-        self.confounder_labels = np.full((N*2), -1)
-
-        if self.samples <= 0:
+        if N <= 0:
             return None, None
-
-        overlap = self.overlap
-        assert(overlap % 2 == 0 and overlap <= 32)
-        overhang = int(overlap / 2)
 
         if params is None:
             params = [
@@ -329,25 +327,36 @@ class generator:
                 [[5, 4], [10, 6]] # confounder_labels
             ]
 
+        n_groups = len(params[0])
+        self.domain_labels = np.full((N*n_groups), self.domain)
+        self.confounder_labels = np.full((N*n_groups), -1)
+        self.class_labels = np.full((N*n_groups), -1)
+
+
+        overlap = self.overlap
+        assert(overlap % 2 == 0 and overlap <= 32)
+        overhang = int(overlap / 2)
+
         confounded_samples = int(N*self.confounded_samples)
 
-        if self.de_correlate_confounder == True:
-            # 2 confounding effects between 2 groups, confounder_labels chosen by chance
-            self.confounder_labels[:confounded_samples] = np.random.randint(0,2,size=confounded_samples)
-            self.confounder_labels[N:N + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
-            #print("de-correlated: ",self.confounder_labels)
+        for g in range(n_groups):
+            # define confounder labels
+            if self.de_correlate_confounder == True:
+                # confounding effects between groups, confounder_labels chosen by chance
+                self.confounder_labels[N*g:N*g + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
+            else:
+                # confounding effects between groups
+                self.confounder_labels[N*g:N*g + confounded_samples] = np.full((confounded_samples),g)
 
-        else:
-            # 2 confounding effects between 2 groups
-            self.confounder_labels[:confounded_samples] = 0
-            self.confounder_labels[N:N + confounded_samples] = 1
-            #print("correlated: ", self.confounder_labels)
+            # define class labels
+            self.class_labels[N*g:N*(g+1)] = np.full((N),g)
 
-        if self.conditioning != -1:
-            self.confounder_labels[self.conditioning*N:(self.conditioning+1)*N] = np.full((N),-1)
+        # cf and mc are the confounding- and class-features
+        # these are derived from the confounding -and class-labels
+        cf = np.zeros((N*n_groups))
+        mf = np.zeros((N*n_groups))
 
-
-        cf = np.zeros((N*2))
+        # derive cf from confounder-label
         for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
             if index != -1:
@@ -356,23 +365,18 @@ class generator:
             else:
                 cf[i] = np.nan
 
-
-        # 2 major effects between 2 groups
-        mf = np.zeros((N*2))
-        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
-        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
+        # derive mf from class-label
+        for g in range(n_groups):
+            mf[N*g:N*(g+1)] = np.random.uniform(params[0][g][0], params[0][g][1], N)
 
         # simulate images
-        x = np.zeros((N*2,1,32,32))
-        y = np.zeros((N*2))
-        y[N:] = 1
-
-        for i in range(N*2):
+        x = np.zeros((N*n_groups,1,32,32))
+        for i in range(0,N*n_groups):
             # add real feature
             x[i,0,:16 + overhang, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
-            # check if confounder_labels should be added
+            # check if confounder feature should be added
             if not np.isnan(cf[i]):
                 x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
                 x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
@@ -380,13 +384,18 @@ class generator:
             # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
+        if self.conditioning != -1:
+            self.domain_labels[N*self.conditioning:N*(self.conditioning+1)]
+            self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)]
+
         if self.debug:
             print("--- generator ---")
             print("Confounding factor:",self.confounded_samples)
             print("Number of samples per group")
             print("Confounded samples per group (estimate):", confounded_samples)
+
         self.x = x
-        self.y = y
+        self.y = self.class_labels
 
 
     def br_net_simple(self, params=None):
@@ -598,7 +607,7 @@ class train:
 class confounder:
     all_results = pd.DataFrame()
     t = None
-    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
+    def __init__(self, seed=41, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
         torch.backends.cudnn.benchmark = True
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -639,12 +648,13 @@ class confounder:
 
     def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, conditioning=-1, params=None):
         iterations = len(test_confounding)
-        self.train_x, self.test_x = np.empty((iterations,samples*2 + target_domain_samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
-        self.train_y, self.test_y = np.empty((iterations,samples*2 + target_domain_samples*2)), np.empty((iterations,samples*2))
-        self.train_domain_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
-        self.test_domain_labels = np.empty((iterations,samples*2))
-        self.train_confounder_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
-        self.test_confounder_labels = np.empty((iterations,samples*2))
+        self.n_classes = len(params[0])
+        self.train_x, self.test_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32)), np.empty((iterations,samples*self.n_classes,1,32,32))
+        self.train_y, self.test_y = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes)), np.empty((iterations,samples*self.n_classes))
+        self.train_domain_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_domain_labels = np.empty((iterations,samples*self.n_classes))
+        self.train_confounder_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_confounder_labels = np.empty((iterations,samples*self.n_classes))
         self.conditioning = conditioning
         self.samples = samples
         self.target_domain_samples = target_domain_samples
@@ -665,19 +675,19 @@ class confounder:
         # train data
         g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
         g_train_data = g_train.get_data()
-        self.train_x[0,:samples*2] = g_train_data[0]
-        self.train_y[0,:samples*2] = g_train_data[1]
-        self.train_domain_labels[0,:samples*2] = g_train_data[2]
-        self.train_confounder_labels[0,:samples*2] = g_train_data[3]
+        self.train_x[0,:samples*self.n_classes] = g_train_data[0]
+        self.train_y[0,:samples*self.n_classes] = g_train_data[1]
+        self.train_domain_labels[0,:samples*self.n_classes] = g_train_data[2]
+        self.train_confounder_labels[0,:samples*self.n_classes] = g_train_data[3]
 
         # append target domain_labels data to source domain_labels data
         if target_domain_samples != 0:
             g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
             g_target_domain_data =g_target_domain.get_data()
-            self.train_x[0,samples*2:] = g_target_domain_data[0]
-            self.train_y[0,samples*2:] = g_target_domain_data[1]
-            self.train_domain_labels[0,samples*2:] = g_target_domain_data[2]
-            self.train_confounder_labels[0,samples*2:] = g_target_domain_data[3]
+            self.train_x[0,samples*self.n_classes:] = g_target_domain_data[0]
+            self.train_y[0,samples*self.n_classes:] = g_target_domain_data[1]
+            self.train_domain_labels[0,samples*self.n_classes:] = g_target_domain_data[2]
+            self.train_confounder_labels[0,samples*self.n_classes:] = g_target_domain_data[3]
 
         i = 0
         for cf_var in test_confounding:
@@ -803,7 +813,7 @@ class confounder:
         return
 
 
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
         p = plot()
         model_name = self.model.get_name()
 
@@ -811,7 +821,7 @@ class confounder:
             p.accuracy_vs_epoch(self.results)
 
         if accuracy_vs_strength:
-            p.accuracy_vs_strength(self.results)
+            p.accuracy_vs_strength(self.results, n_classes=self.n_classes, ideal=epoch_vs_strength_ideal)
 
         if plot_all:
             p.accuracy_vs_epoch_all(confounder.all_results)

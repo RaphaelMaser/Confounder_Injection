@@ -90,7 +90,7 @@ class LeNet_5(nn.Module):
 
 # Building a Neural Network architecture
 class Br_Net(nn.Module):
-    def __init__(self):
+    def __init__(self, n_classes=2):
         super(Br_Net, self).__init__()
         self.alpha = None
         self.linear_relu_stack = nn.Sequential(
@@ -107,7 +107,7 @@ class Br_Net(nn.Module):
             nn.MaxPool2d(kernel_size=2),
 
             nn.Flatten(),
-            nn.Linear(32,2),
+            nn.Linear(32,n_classes),
         )
 
     def forward(self, x):
@@ -119,7 +119,7 @@ class Br_Net(nn.Module):
         return "BrNet"
 
 class Br_Net_CF_free(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha, n_classes=2):
         super(Br_Net_CF_free, self).__init__()
         self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
@@ -139,11 +139,11 @@ class Br_Net_CF_free(nn.Module):
         )
 
         self.class_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
         self.domain_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
     def forward(self, x):
@@ -158,7 +158,7 @@ class Br_Net_CF_free(nn.Module):
         return "BrNet_CF_free"
 
 class Br_Net_CF_free_conditioned(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha, n_classes=2):
         super(Br_Net_CF_free_conditioned, self).__init__()
         self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
@@ -178,11 +178,11 @@ class Br_Net_CF_free_conditioned(nn.Module):
         )
 
         self.class_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
         self.domain_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
     def forward(self, x):
@@ -197,7 +197,7 @@ class Br_Net_CF_free_conditioned(nn.Module):
         return "BrNet_CF_free_conditioned"
 
 class Br_Net_DANN(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha, n_classes=2):
         super(Br_Net_DANN, self).__init__()
         self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
@@ -217,11 +217,11 @@ class Br_Net_DANN(nn.Module):
         )
 
         self.class_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
         self.domain_predictor = nn.Sequential(
-            nn.Linear(32,2)
+            nn.Linear(32,n_classes)
         )
 
     def forward(self, x):
