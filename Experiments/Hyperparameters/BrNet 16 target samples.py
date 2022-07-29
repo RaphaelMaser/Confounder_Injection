@@ -25,9 +25,9 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 500
+samples = 100
 target_domain_samples = 16
-max_concurrent_trials = 32
+max_concurrent_trials = 16
 
 search_space = {
     "epochs":epochs,
