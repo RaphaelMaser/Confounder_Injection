@@ -22,7 +22,7 @@ params = [
     [[10, 12], [20, 22]] # confounder
     ]
 
-epochs = 1000
+epochs = 10000
 e = datetime.datetime.now()
 t = f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"
 
