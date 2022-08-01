@@ -25,7 +25,7 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 100
+samples = 256
 target_domain_samples = 16
 max_concurrent_trials = 128
 
@@ -80,7 +80,7 @@ analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter
 
 ##
 c = CI.confounder()
-model = Models.Br_Net_CF_free(alpha=None)
+model = Models.Br_Net_CF_free_conditioned(alpha=None)
 search_space["model"] = model
 search_space["wandb_init"]["group"] = "BrNet CF free conditioning=0"
 
