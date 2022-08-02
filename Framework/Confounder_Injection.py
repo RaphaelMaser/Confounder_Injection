@@ -169,10 +169,11 @@ class plot_from_csv:
         df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
         #df.to_csv("df file.csv")
         classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
-        confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
-
         sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
-        sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+
+        if "confounder_accuracy" in df:
+            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
 
         plt.tight_layout()
         return
@@ -207,7 +208,7 @@ class plot_from_csv:
 
             config_dict = {}
             for c in project_df["config"][i]:
-                config_dict[c] = {k:project_df["config"][i][c] for k in range(0,len(project_df["history"].iloc[i]["confounder_accuracy"]))}
+                config_dict[c] = {k:project_df["config"][i][c] for k in range(0,len(project_df["history"].iloc[i]["classification_accuracy"]))}
 
 
             history_frame = pd.DataFrame.from_dict(history_dict)
