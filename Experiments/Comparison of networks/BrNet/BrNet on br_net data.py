@@ -112,6 +112,41 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN
 
 # In[7]:
 
+##
+##  Correlated
+##
+
+c = CI.confounder(clean_results=True)
+model = Models.Br_Net()
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
+
+
+# In[9]:
+
+
+c = CI.confounder()
+model = Models.Br_Net_CF_free(BrNet_CF_free_hyperparams["alpha"])
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
+
+
+# In[10]:
+
+
+c = CI.confounder()
+model = Models.Br_Net_CF_free_conditioned(BrNet_CF_free_hyperparams["alpha"])
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
+
+
+# In[11]:
+
+
+c = CI.confounder()
+model = Models.Br_Net_DANN(BrNet_DANN_hyperparams["alpha"])
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
 
