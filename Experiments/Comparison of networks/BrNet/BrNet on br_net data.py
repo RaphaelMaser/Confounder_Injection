@@ -45,30 +45,30 @@ wandb_init = {
 }
 
 BrNet_hyperparams = {
-    "lr": 0.0004997,
-    "weight_decay": 0.000002459,
-    "batch_size": 64,
+    "lr": 0.0003537,
+    "weight_decay": 0.000001366,
+    "batch_size": 128,
 }
 
 BrNet_CF_free_hyperparams = {
-    "lr": 0.00005954,
-    "weight_decay": 0.0004026,
+    "lr": 0.00008257,
+    "weight_decay": 0.001969,
     "batch_size": 128,
-    "alpha": 0.9134,
+    "alpha": 0.9846,
 }
 
 BrNet_CF_free_conditioned_hyperparams = {
-    "lr": 0.001252,
-    "weight_decay": 0.0004509,
-    "batch_size": 256,
-    "alpha": 0.7702,
+    "lr": 0.0005194,
+    "weight_decay": 0.000003571,
+    "batch_size": 128,
+    "alpha": 0.5483,
 }
 
 BrNet_DANN_hyperparams = {
-    "lr": 0.000843,
-    "weight_decay": 0.0001522,
+    "lr": 0.000495,
+    "weight_decay": 0.00003478,
     "batch_size": 256,
-    "alpha": 0.896,
+    "alpha": 0.699,
 }
 
 
