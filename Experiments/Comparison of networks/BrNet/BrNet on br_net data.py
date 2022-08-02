@@ -77,7 +77,7 @@ BrNet_DANN_hyperparams = {
 #
 c = CI.confounder(clean_results=True, start_timer=True)
 model = Models.Br_Net()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
 
 
@@ -86,7 +86,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hype
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free(alpha=0.66)
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -95,7 +95,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free_conditioned(alpha=0.7)
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params, conditioning=0)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params, conditioning=0)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -104,7 +104,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_DANN(alpha=0.7)
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
@@ -118,7 +118,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN
 
 c = CI.confounder(clean_results=True)
 model = Models.Br_Net()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
 
 
@@ -127,7 +127,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hype
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -136,7 +136,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free_conditioned(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -145,7 +145,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_DANN(BrNet_DANN_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
@@ -163,7 +163,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN
 
 c = CI.confounder(clean_results=True)
 model = Models.Br_Net()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
 
 
@@ -172,7 +172,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hype
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -181,7 +181,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free_conditioned(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -190,7 +190,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_DANN(BrNet_DANN_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
@@ -206,7 +206,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN
 
 c = CI.confounder(clean_results=True)
 model = Models.Br_Net()
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_hyperparams["lr"], 'weight_decay':BrNet_hyperparams["weight_decay"]})
 
 
@@ -215,7 +215,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_hype
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -224,7 +224,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_CF_free_conditioned(BrNet_CF_free_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_hyperparams["lr"], 'weight_decay':BrNet_CF_free_hyperparams["weight_decay"]})
 
 
@@ -233,7 +233,7 @@ c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_f
 
 c = CI.confounder()
 model = Models.Br_Net_DANN(BrNet_DANN_hyperparams["alpha"])
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[0,1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
+c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
 c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
