@@ -386,8 +386,8 @@ class generator:
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
         if self.conditioning != -1:
-            self.domain_labels[N*self.conditioning:N*(self.conditioning+1)]
-            self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)]
+            self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+            self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
 
         if self.debug:
             print("--- generator ---")
@@ -674,7 +674,7 @@ class confounder:
         self.index = test_confounding
 
         # train data
-        g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
+        g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0, conditioning=conditioning)
         g_train_data = g_train.get_data()
         self.train_x[0,:samples*self.n_classes] = g_train_data[0]
         self.train_y[0,:samples*self.n_classes] = g_train_data[1]
