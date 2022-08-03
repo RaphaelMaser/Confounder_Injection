@@ -276,16 +276,21 @@ def target_domain_confounded_decorrelated_128_samples():
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_DANN_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_DANN_hyperparams["lr"], 'weight_decay':BrNet_DANN_hyperparams["weight_decay"]})
 
 
-p1 = multiprocessing.Process(target=target_domain_unconfounded_test_unconfounded_16_samples)
-p2 = multiprocessing.Process(target=target_domain_unconfounded_test_confounded_16_samples)
-p3 = multiprocessing.Process(target=target_domain_empty_samples)
-p4 = multiprocessing.Process(target=target_domain_confounded_decorrelated_16_samples)
-p5 = multiprocessing.Process(target=target_domain_confounded_decorrelated_128_samples)
-p1.start()
-p2.start()
-p3.start()
-p4.start()
-p5.start()
+
+# p1 = multiprocessing.Process(target=target_domain_unconfounded_test_unconfounded_16_samples)
+# p2 = multiprocessing.Process(target=target_domain_unconfounded_test_confounded_16_samples)
+# p3 = multiprocessing.Process(target=target_domain_empty_samples)
+# p4 = multiprocessing.Process(target=target_domain_confounded_decorrelated_16_samples)
+# p5 = multiprocessing.Process(target=target_domain_confounded_decorrelated_128_samples)
+# p1.start()
+# p2.start()
+# p3.start()
+# p4.start()
+# p5.start()
+target_domain_unconfounded_test_unconfounded_16_samples()
+target_domain_unconfounded_test_confounded_16_samples()
+target_domain_empty_samples()target_domain_confounded_decorrelated_16_samples()
+target_domain_confounded_decorrelated_128_samples()
 
 # In[17]:
 
