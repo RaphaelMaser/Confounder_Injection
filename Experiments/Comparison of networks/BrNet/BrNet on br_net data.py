@@ -289,7 +289,8 @@ def target_domain_confounded_decorrelated_128_samples():
 # p5.start()
 target_domain_unconfounded_test_unconfounded_16_samples()
 target_domain_unconfounded_test_confounded_16_samples()
-target_domain_empty_samples()target_domain_confounded_decorrelated_16_samples()
+target_domain_empty_samples()
+target_domain_confounded_decorrelated_16_samples()
 target_domain_confounded_decorrelated_128_samples()
 
 # In[17]:
