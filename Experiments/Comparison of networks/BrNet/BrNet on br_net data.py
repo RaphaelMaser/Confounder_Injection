@@ -12,7 +12,7 @@ importlib.reload(CI)
 import torch
 import time
 import datetime
-import multiprocessing
+import ray
 
 
 # In[2]:
@@ -23,7 +23,7 @@ params = [
     [[10, 12], [20, 22]] # confounder
     ]
 
-epochs = 10000
+epochs = 100
 e = datetime.datetime.now()
 t = f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"
 
@@ -72,10 +72,12 @@ BrNet_DANN_hyperparams = {
     "alpha": 0.699,
 }
 
+ray.init()
 
 #
 # CONFOUNDERS IN TRAINING BUT NOT IN TEST DATA
 #
+@ray.remote
 def target_domain_unconfounded_test_unconfounded_16_samples():
     c = CI.confounder(clean_results=True, start_timer=True)
     model = Models.Br_Net()
@@ -113,6 +115,7 @@ def target_domain_unconfounded_test_unconfounded_16_samples():
 ### Correlated confoundes in test data
 ###
 
+@ray.remote
 def target_domain_unconfounded_test_confounded_16_samples():
     c = CI.confounder(clean_results=True, start_timer=True)
     model = Models.Br_Net()
@@ -154,6 +157,7 @@ def target_domain_unconfounded_test_confounded_16_samples():
 ##
 ##  Correlated confounders in test data
 ##
+@ray.remote
 def target_domain_empty_samples():
     c = CI.confounder(clean_results=True)
     model = Models.Br_Net()
@@ -199,6 +203,7 @@ def target_domain_empty_samples():
 
 # In[8]:
 
+@ray.remote
 def target_domain_confounded_decorrelated_16_samples():
     c = CI.confounder(clean_results=True)
     model = Models.Br_Net()
@@ -242,6 +247,7 @@ def target_domain_confounded_decorrelated_16_samples():
 
 # In[13]:
 
+@ray.remote
 def target_domain_confounded_decorrelated_128_samples():
     c = CI.confounder(clean_results=True)
     model = Models.Br_Net()
@@ -287,11 +293,11 @@ def target_domain_confounded_decorrelated_128_samples():
 # p3.start()
 # p4.start()
 # p5.start()
-target_domain_unconfounded_test_unconfounded_16_samples()
-target_domain_unconfounded_test_confounded_16_samples()
-target_domain_empty_samples()
-target_domain_confounded_decorrelated_16_samples()
-target_domain_confounded_decorrelated_128_samples()
+target_domain_unconfounded_test_unconfounded_16_samples.remote()
+target_domain_unconfounded_test_confounded_16_samples.remote()
+target_domain_empty_samples.remote()
+target_domain_confounded_decorrelated_16_samples.remote()
+target_domain_confounded_decorrelated_128_samples.remote()
 
 # In[17]:
 

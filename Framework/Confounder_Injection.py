@@ -80,7 +80,7 @@ class plot:
         class_mean_acc = classification_accuracy.mean(axis='rows')
         if ideal:
             ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
-            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc, "theoretic upper bound":ideal_df}, axis='columns')
+            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc, "theoretical upper bound":ideal_df}, axis='columns')
         else:
             class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
 
