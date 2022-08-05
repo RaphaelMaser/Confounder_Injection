@@ -17,10 +17,11 @@ from torch import nn
 from ray.tune import CLIReporter
 import wandb
 import datetime
+import argparse
 
 params = [
     [[1, 4], [3, 6]], # real feature
-    [[10, 12], [20, 22]] # confounder
+    [[10, 12], [20, 22]] # confounder_labels
 ]
 
 e = datetime.datetime.now()
@@ -51,52 +52,95 @@ search_space = {
 }
 
 
-##
-c = CI.confounder()
-model = Models.Br_Net()
-search_space["model"] = model
-#search_space["wandb_init"]["group"] = "BrNet"
+def BrNet_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net()
+    #search_space["wandb_init"]["group"] = "BrNet"
 
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-#c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+    #c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 
-reporter = CLIReporter(max_progress_rows=1, max_report_frequency=1200)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
-#scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t),
-
-
-##
-c = CI.confounder()
-model = Models.Br_Net_CF_free(alpha=None)
-search_space["model"] = model
-search_space["wandb_init"]["group"] = "BrNet CF free"
-search_space["alpha"] = tune.uniform(0,1)
-
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-
-reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=1200)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    #scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t),
 
 
 ##
-c = CI.confounder()
-model = Models.Br_Net_CF_free_conditioned(alpha=None)
-search_space["model"] = model
-search_space["wandb_init"]["group"] = "BrNet CF free conditioning=0"
+def Br_Net_CF_free_labels_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net_CF_free_labels(alpha=None)
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels"
+    search_space["alpha"] = tune.uniform(0,1)
 
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
-reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
-c = CI.confounder()
-model = Models.Br_Net_DANN(alpha=None)
-search_space["model"] = model
-search_space["wandb_init"]["group"] = "BrNet DANN"
+def Br_Net_CF_free_features_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net_CF_free_features(alpha=None)
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_features"
+    search_space["alpha"] = tune.uniform(0,1)
 
-c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
-reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+
+
+##
+def Br_Net_CF_free_labels_conditioned_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net_CF_free_labels_conditioned(alpha=None)
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["alpha"] = tune.uniform(0,1)
+
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
+
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+
+##
+def Br_Net_CF_free_features_conditioned_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net_CF_free_features_conditioned(alpha=None)
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_features_conditioned"
+    search_space["alpha"] = tune.uniform(0,1)
+
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
+
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+
+
+##
+def Br_Net_DANN_hyperparams():
+    c = CI.confounder()
+    search_space["model"] = Models.Br_Net_DANN(alpha=None)
+    search_space["wandb_init"]["group"] = "Br_Net_DANN"
+    search_space["alpha"] = tune.uniform(0,1)
+
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+
+parser = argparse.ArgumentParser()
+parser.add_argument('experiment_number', type=int, help="Define the number of experiment to execute")
+args = parser.parse_args()
+
+if args.experiment_number == 0:
+    BrNet_hyperparams()
+elif args.experiment_number == 1:
+    Br_Net_CF_free_labels_hyperparams()
+elif args.experiment_number == 2:
+    Br_Net_CF_free_features_hyperparams()
+elif args.experiment_number == 3:
+    Br_Net_CF_free_labels_conditioned_hyperparams()
+elif args.experiment_number == 4:
+    Br_Net_CF_free_features_conditioned_hyperparams()
+elif args.experiment_number == 5:
+    Br_Net_DANN_hyperparams()

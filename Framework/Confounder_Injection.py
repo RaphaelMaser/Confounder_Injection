@@ -79,12 +79,12 @@ class plot:
         class_max_acc = classification_accuracy.max(axis='rows')
         class_mean_acc = classification_accuracy.mean(axis='rows')
         if ideal:
-            ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
-            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc, "theoretical upper bound":ideal_df}, axis='columns')
-        else:
-            class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
+            #ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
+            ideal_df = pd.DataFrame({"theoretical upper bound":[1/n_classes,1]}, index=[0,1])
+            sbs.lineplot(data=ideal_df, ax=ax, dashes=[(2,2)], palette=["green"])
+        class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
 
-        s = sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))
+        sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))#, xlabel="confounder_labels strength in test set" )
         plt.tight_layout()
         #conf_max_acc = confounder_accuracy.max(axis='rows')
         #conf_mean_acc = confounder_accuracy.mean(axis='rows')
@@ -233,37 +233,42 @@ class plot_from_csv:
 
 
 class CfDataset(torch.utils.data.Dataset):
-    def __init__(self, x, y, domain=None, confounder=None):
+    def __init__(self, x, y, domain_labels=None, confounder_labels=None, confounder_features=None):
         self.x = x
         self.y = y
+        assert(domain_labels != None)
+        assert(confounder_labels != None)
+        assert(confounder_features != None)
 
-        if domain == None:
-            domain = np.zeros((len(y)))
-        if confounder == None:
-            confounder = np.zeros((len(y)))
+        if domain_labels == None:
+            domain_labels = np.fill((len(y)),-1)
+        if confounder_labels == None:
+            confounder_labels = np.fill((len(y)),-1)
 
-        self.domain = domain
-        self.confounder = confounder
+        self.domain_labels = domain_labels
+        self.confounder_labels = confounder_labels
+        self.confounder_features = confounder_features
 
     def __len__(self):
         return len(self.y)
 
     def __getitem__(self, idx):
-        return self.x[idx], {'y': self.y[idx], 'domain_labels': self.domain[idx], 'confounder_labels':self.confounder[idx]}
+        return self.x[idx], {'y': self.y[idx], 'domain_labels': self.domain_labels[idx], 'confounder_labels':self.confounder_labels[idx], 'confounder_features': self.confounder_features[idx]}
 
     def confounder_size(self):
-        confounder_samples = self.confounder[self.confounder != -1]
+        confounder_samples = self.confounder_labels[self.confounder_labels != -1]
         return len(confounder_samples)
 
 
 class create_dataloader:
-    def __init__(self, x=None, y=None, domain=None, confounder=None, batch_size=1):
+    def __init__(self, x=None, y=None, domain_labels=None, confounder_labels=None, confounder_features = None, batch_size=1):
         #assert(x != None and y != None)
         self.x = x
         self.y = y
-        self.domain_labels = domain
-        self.confounder_labels = confounder
+        self.domain_labels = domain_labels
+        self.confounder_labels = confounder_labels
         self.batch_size = batch_size
+        self.confounder_features = confounder_features
 
 
     # def split_dataset(self, dataset):
@@ -281,8 +286,9 @@ class create_dataloader:
         tensor_y = torch.Tensor(self.y).long()
         tensor_domain = torch.Tensor(self.domain_labels).long()
         tensor_confounder_labels= torch.Tensor(self.confounder_labels).long()
+        tensor_confounder_features= torch.Tensor(self.confounder_features).long()
 
-        dataset = CfDataset(x=tensor_x, y=tensor_y, domain=tensor_domain, confounder=tensor_confounder_labels)
+        dataset = CfDataset(x=tensor_x, y=tensor_y, domain_labels=tensor_domain, confounder_labels=tensor_confounder_labels, confounder_features=tensor_confounder_features)
         #train_dataset, test_dataset = self.split_dataset(dataset)
         # TODO delete unnecessary stuff
         # create DataLoader
@@ -298,6 +304,7 @@ class generator:
         self.x = None
         self.y = None
         self.confounder_labels = None
+        self.confounder_features = None
         self.domain_labels = None
 
         self.debug = False
@@ -341,7 +348,7 @@ class generator:
         confounded_samples = int(N*self.confounded_samples)
 
         for g in range(n_groups):
-            # define confounder labels
+            # define confounder_labels labels
             if self.de_correlate_confounder == True:
                 # confounding effects between groups, confounder_labels chosen by chance
                 self.confounder_labels[N*g:N*g + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
@@ -357,7 +364,7 @@ class generator:
         cf = np.zeros((N*n_groups))
         mf = np.zeros((N*n_groups))
 
-        # derive cf from confounder-label
+        # derive cf from confounder_labels-label
         for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
             if index != -1:
@@ -377,7 +384,7 @@ class generator:
             x[i,0,:16 + overhang, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
-            # check if confounder feature should be added
+            # check if confounder_labels feature should be added
             if not np.isnan(cf[i]):
                 x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
                 x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
@@ -397,6 +404,7 @@ class generator:
 
         self.x = x
         self.y = self.class_labels
+        self.confounder_features = cf
 
 
     def br_net_simple(self, params=None):
@@ -473,7 +481,7 @@ class generator:
         return kernel
 
     def get_data(self):
-        return self.x, self.y, self.domain_labels, self.confounder_labels
+        return self.x, self.y, self.domain_labels, self.confounder_labels, self.confounder_features
 
 
 class train:
@@ -513,30 +521,30 @@ class train:
 
         return classification_accuracy, confounder_accuracy
 
-    def test_DANN(self):
-        size = len(self.test_dataloader.dataset)
-        confounder_size = self.test_dataloader.dataset.confounder_size()
-        num_batches = len(self.test_dataloader)
-        self.model.eval()
-        classification_accuracy, confounder_accuracy = 0, 0
-        with torch.no_grad():
-            for X,label in self.test_dataloader:
-                X = X.to(self.device)
-                y = label["y"].to(self.device)
-                conf = label["confounder_labels"].to(self.device)
-
-                class_pred, domain_pred = self.model(X)
-                #test_loss += self.loss_fn(class_pred, label["y"]).item()
-                classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
-                confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
-        #test_loss /= num_batches
-        classification_accuracy /= size
-        if confounder_size <= 0:
-            confounder_accuracy = None
-        else:
-            confounder_accuracy /= confounder_size
-
-        return classification_accuracy, confounder_accuracy
+    # def test_DANN(self):
+    #     size = len(self.test_dataloader.dataset)
+    #     confounder_size = self.test_dataloader.dataset.confounder_size()
+    #     num_batches = len(self.test_dataloader)
+    #     self.model.eval()
+    #     classification_accuracy, confounder_accuracy = 0, 0
+    #     with torch.no_grad():
+    #         for X,label in self.test_dataloader:
+    #             X = X.to(self.device)
+    #             y = label["y"].to(self.device)
+    #             conf = label["confounder_labels"].to(self.device)
+    #
+    #             class_pred, domain_pred = self.model(X)
+    #             #test_loss += self.loss_fn(class_pred, label["y"]).item()
+    #             classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
+    #             confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
+    #     #test_loss /= num_batches
+    #     classification_accuracy /= size
+    #     if confounder_size <= 0:
+    #         confounder_accuracy = None
+    #     else:
+    #         confounder_accuracy /= confounder_size
+    #
+    #     return classification_accuracy, confounder_accuracy
 
 
     def train_normal(self):
@@ -557,14 +565,8 @@ class train:
             self.optimizer.step()
         return
 
-    def train_adversarial(self, mode=None, ignore=[]):
-        if mode == "DANN":
-            adversarial_loss = "domain_labels"
-        elif mode == "CF_free":
-            adversarial_loss = "confounder_labels"
-        else:
-            adversarial_loss = None
-
+    def train_adversarial(self):
+        adversarial_loss = self.model.mode
         self.model = self.model.to(self.device)
 
         # loss functions
@@ -576,7 +578,6 @@ class train:
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adv = label[adversarial_loss].to(self.device)
-
             # prediction
             class_pred, conf_pred = self.model(X)
 
@@ -593,11 +594,8 @@ class train:
         return
 
     def run(self):
-        if isinstance(self.model, Models.SimpleConv_DANN) or isinstance(self.model, Models.Br_Net_DANN):
-            self.train_adversarial(mode="DANN")
-
-        elif isinstance(self.model, Models.SimpleConv_CF_free) or isinstance(self.model, Models.Br_Net_CF_free):
-            self.train_adversarial(mode="CF_free")
+        if self.model.adversarial:
+            self.train_adversarial()
         else:
             self.train_normal()
 
@@ -620,11 +618,13 @@ class confounder:
         self.train_y = None
         self.train_domain_labels = None
         self.train_confounder_labels = None
+        self.train_confounder_features = None
 
         self.test_x = None
         self.test_y = None
         self.test_domain_labels = None
         self.test_confounder_labels = None
+        self.test_confounder_features = None
 
         self.results = None
         self.loss = []
@@ -654,8 +654,13 @@ class confounder:
         self.train_y, self.test_y = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes)), np.empty((iterations,samples*self.n_classes))
         self.train_domain_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
         self.test_domain_labels = np.empty((iterations,samples*self.n_classes))
+
         self.train_confounder_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
         self.test_confounder_labels = np.empty((iterations,samples*self.n_classes))
+
+        self.train_confounder_features = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_confounder_features = np.empty((iterations,samples*self.n_classes))
+
         self.conditioning = conditioning
         self.samples = samples
         self.target_domain_samples = target_domain_samples
@@ -680,6 +685,7 @@ class confounder:
         self.train_y[0,:samples*self.n_classes] = g_train_data[1]
         self.train_domain_labels[0,:samples*self.n_classes] = g_train_data[2]
         self.train_confounder_labels[0,:samples*self.n_classes] = g_train_data[3]
+        self.train_confounder_features[0,:samples*self.n_classes] = g_train_data[4]
 
         # append target domain_labels data to source domain_labels data
         if target_domain_samples != 0:
@@ -689,6 +695,7 @@ class confounder:
             self.train_y[0,samples*self.n_classes:] = g_target_domain_data[1]
             self.train_domain_labels[0,samples*self.n_classes:] = g_target_domain_data[2]
             self.train_confounder_labels[0,samples*self.n_classes:] = g_target_domain_data[3]
+            self.train_confounder_features[0,samples*self.n_classes:] = g_target_domain_data[4]
 
         i = 0
         for cf_var in test_confounding:
@@ -699,6 +706,7 @@ class confounder:
             self.test_y[i] = g_test_data[1]
             self.test_domain_labels[i] = g_test_data[2]
             self.test_confounder_labels[i] = g_test_data[3]
+            self.test_confounder_features[i] = g_test_data[4]
 
 
             i += 1
@@ -766,9 +774,9 @@ class confounder:
 
         self.model = copy.deepcopy(model)
         model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
+        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=batch_size, confounder_features=self.train_confounder_features[set]).get_dataloader()
         for cf_var in range(0,len(self.index)):
-            self.test_dataloader.append(create_dataloader(self.test_x[cf_var],self.test_y[cf_var], domain=self.test_domain_labels[cf_var], confounder=self.test_confounder_labels[cf_var], batch_size=batch_size).get_dataloader())
+            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=batch_size, confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
         for i in range(0, epochs):
             # load new results
@@ -798,7 +806,7 @@ class confounder:
             wandb.finish()
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
-        #confounder.all_results.append(self.results)
+        #confounder_labels.all_results.append(self.results)
 
         if self.debug:
             print("--- train ---")

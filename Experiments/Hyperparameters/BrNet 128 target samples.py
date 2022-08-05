@@ -20,7 +20,7 @@ import datetime
 
 params = [
     [[1, 4], [3, 6]], # real feature
-    [[10, 12], [20, 22]] # confounder
+    [[10, 12], [20, 22]] # confounder_labels
 ]
 
 e = datetime.datetime.now()

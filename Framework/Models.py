@@ -93,6 +93,8 @@ class Br_Net(nn.Module):
     def __init__(self, n_classes=2):
         super(Br_Net, self).__init__()
         self.alpha = None
+        self.adversarial = False
+        self.name = "BrNet"
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 2, kernel_size=3),
             nn.Tanh(),
@@ -116,12 +118,15 @@ class Br_Net(nn.Module):
         return logits, None
 
     def get_name(self):
-        return "BrNet"
+        return self.name
 
-class Br_Net_CF_free(nn.Module):
-    def __init__(self, alpha, n_classes=2):
-        super(Br_Net_CF_free, self).__init__()
+class Br_Net_adversarial(nn.Module):
+    def __init__(self, alpha, n_classes):
+        super(Br_Net_adversarial, self).__init__()
         self.alpha = alpha
+        self.adversarial = False
+        self.name = None
+        self.mode = None
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 2, kernel_size=3),
             nn.Tanh(),
@@ -157,83 +162,45 @@ class Br_Net_CF_free(nn.Module):
     def get_name(self):
         return "BrNet_CF_free"
 
-class Br_Net_CF_free_conditioned(nn.Module):
+class Br_Net_CF_free_labels(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2):
-        super(Br_Net_CF_free_conditioned, self).__init__()
+        super().__init__(alpha, n_classes)
         self.alpha = alpha
-        self.linear_relu_stack = nn.Sequential(
-            nn.Conv2d(1, 2, kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
+        self.name = "Br_Net_CF_free_label"
+        self.mode = "confounder_labels"
+        self.adversarial = True
 
-            nn.Conv2d(2, 4,kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
-
-            nn.Conv2d(4, 8, kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
-
-            nn.Flatten(),
-        )
-
-        self.class_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
-        )
-
-        self.domain_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
-        )
-
-    def forward(self, x):
-        features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features, self.alpha)
-
-        class_features = self.class_predictor(features)
-        domain_features = self.domain_predictor(reverse_features)
-        return class_features, domain_features
-
-    def get_name(self):
-        return "BrNet_CF_free_conditioned"
-
-class Br_Net_DANN(nn.Module):
+class Br_Net_CF_free_labels_conditioned(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2):
-        super(Br_Net_DANN, self).__init__()
+        super().__init__(alpha, n_classes)
         self.alpha = alpha
-        self.linear_relu_stack = nn.Sequential(
-            nn.Conv2d(1, 2, kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
+        self.name = "Br_Net_CF_free_label_conditioned"
+        self.mode = "confounder_labels"
+        self.adversarial = True
 
-            nn.Conv2d(2, 4,kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
+class Br_Net_CF_free_features(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2):
+        super().__init__(alpha, n_classes)
+        self.alpha = alpha
+        self.name = "Br_Net_CF_free_feature"
+        self.mode = "confounder_features"
+        self.adversarial = True
 
-            nn.Conv2d(4, 8, kernel_size=3),
-            nn.Tanh(),
-            nn.MaxPool2d(kernel_size=2),
+class Br_Net_CF_free_features_conditioned(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2):
+        super().__init__(alpha, n_classes)
+        self.alpha = alpha
+        self.name = "Br_Net_CF_free_feature_conditioned"
+        self.mode = "confounder_features"
+        self.adversarial = True
 
-            nn.Flatten(),
-        )
-
-        self.class_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
-        )
-
-        self.domain_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
-        )
-
-    def forward(self, x):
-        features = self.linear_relu_stack(x)
-        reverse_features = GradientReversal.apply(features, self.alpha)
-
-        class_features = self.class_predictor(features)
-        domain_features = self.domain_predictor(reverse_features)
-        return class_features, domain_features
-
-    def get_name(self):
-        return "BrNet_DANN"
+class Br_Net_DANN(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2):
+        super().__init__(alpha, n_classes)
+        self.alpha = alpha
+        self.name = "Br_Net_CF_free_DANN"
+        self.mode = "domain_labels"
+        self.adversarial = True
 
 class SimpleConv_DANN(nn.Module):
     def __init__(self, alpha):
