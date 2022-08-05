@@ -28,7 +28,8 @@ e = datetime.datetime.now()
 epochs = 10000
 samples = 256
 target_domain_samples = 16
-max_concurrent_trials = 16
+max_concurrent_trials = 32
+ressources_per_trial = {"cpu":4, "gpu":0}
 
 search_space = {
     "epochs":epochs,
@@ -61,7 +62,7 @@ def BrNet_hyperparams():
     #c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=1200)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space,  max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
     #scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=max_t),
 
 
@@ -75,7 +76,7 @@ def Br_Net_CF_free_labels_hyperparams():
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
@@ -88,7 +89,7 @@ def Br_Net_CF_free_features_hyperparams():
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
@@ -101,7 +102,7 @@ def Br_Net_CF_free_labels_conditioned_hyperparams():
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 ##
 def Br_Net_CF_free_features_conditioned_hyperparams():
@@ -113,7 +114,7 @@ def Br_Net_CF_free_features_conditioned_hyperparams():
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params, conditioning=0)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 ##
@@ -126,7 +127,7 @@ def Br_Net_DANN_hyperparams():
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
 
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 parser = argparse.ArgumentParser()
 parser.add_argument('experiment_number', type=int, help="Define the number of experiment to execute")
