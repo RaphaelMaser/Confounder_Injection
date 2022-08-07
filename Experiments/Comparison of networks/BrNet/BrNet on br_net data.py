@@ -114,7 +114,7 @@ def target_domain_unconfounded_test_unconfounded_16_samples():
     c = CI.confounder()
     model = Models.Br_Net_CF_free_labels_conditioned(BrNet_CF_free_labels_conditioned_hyperparams["alpha"])
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0], params=params, conditioning=0)
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_labels_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
 
 
     # In[6]:
@@ -194,7 +194,7 @@ def target_domain_confounded_decorrelated_16_samples():
     c = CI.confounder()
     model = Models.Br_Net_CF_free_labels_conditioned(BrNet_CF_free_labels_hyperparams["alpha"])
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True)
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_labels_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
 
 
     # In[11]:
@@ -240,7 +240,7 @@ def target_domain_confounded_decorrelated_0_samples():
     c = CI.confounder()
     model = Models.Br_Net_CF_free_labels_conditioned(BrNet_CF_free_labels_hyperparams["alpha"])
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_labels_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
 
 
     # In[11]:
@@ -284,7 +284,7 @@ def target_domain_confounded_decorrelated_128_samples():
     c = CI.confounder()
     model = Models.Br_Net_CF_free_labels_conditioned(BrNet_CF_free_labels_hyperparams["alpha"])
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, train_confounding=1, test_confounding=[1], params=params, de_correlate_confounder_test=True, de_correlate_confounder_target=True, conditioning=0)
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=BrNet_CF_free_labels_conditioned_hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':BrNet_CF_free_labels_conditioned_hyperparams["lr"], 'weight_decay':BrNet_CF_free_conditioned_hyperparams["weight_decay"]})
 
 
     # In[16]:

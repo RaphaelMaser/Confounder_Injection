@@ -1,5 +1,7 @@
 from torch import nn
 from Framework.Layers import GradientReversal
+from scipy import stats
+import torch
 
 # Building a Neural Network architecture
 class NeuralNetwork(nn.Module):
@@ -95,6 +97,9 @@ class Br_Net(nn.Module):
         self.alpha = None
         self.adversarial = False
         self.name = "BrNet"
+        self.loss = nn.CrossEntropyLoss()
+        self.adv_loss = None
+        self.conditioning = None
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 2, kernel_size=3),
             nn.Tanh(),
@@ -121,12 +126,15 @@ class Br_Net(nn.Module):
         return self.name
 
 class Br_Net_adversarial(nn.Module):
-    def __init__(self, alpha, n_classes):
+    def __init__(self, alpha, class_output, adv_output, conditioning=None):
         super(Br_Net_adversarial, self).__init__()
         self.alpha = alpha
         self.adversarial = False
         self.name = None
         self.mode = None
+        self.loss = nn.CrossEntropyLoss()
+        self.adv_loss = nn.CrossEntropyLoss()
+        self.conditioning = conditioning
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 2, kernel_size=3),
             nn.Tanh(),
@@ -144,11 +152,11 @@ class Br_Net_adversarial(nn.Module):
         )
 
         self.class_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
+            nn.Linear(32, class_output)
         )
 
         self.domain_predictor = nn.Sequential(
-            nn.Linear(32,n_classes)
+            nn.Linear(32, adv_output)
         )
 
     def forward(self, x):
@@ -160,47 +168,55 @@ class Br_Net_adversarial(nn.Module):
         return class_features, domain_features
 
     def get_name(self):
+        if self.conditioning != None:
+            return "BrNet_CF_free" + f"_conditioned_{self.conditioning}"
         return "BrNet_CF_free"
 
-class Br_Net_CF_free_labels(Br_Net_adversarial):
-    def __init__(self, alpha, n_classes=2):
-        super().__init__(alpha, n_classes)
+class Br_Net_CF_free_labels_entropy(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2, conditioning=None):
+        super().__init__(alpha, n_classes, n_classes, conditioning)
         self.alpha = alpha
         self.name = "Br_Net_CF_free_label"
         self.mode = "confounder_labels"
         self.adversarial = True
 
-class Br_Net_CF_free_labels_conditioned(Br_Net_adversarial):
-    def __init__(self, alpha, n_classes=2):
-        super().__init__(alpha, n_classes)
+class Br_Net_CF_free_labels_corr(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2, conditioning=None):
+        super().__init__(alpha, n_classes, 1, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_label_conditioned"
+        self.name = "Br_Net_CF_free_label"
         self.mode = "confounder_labels"
         self.adversarial = True
+        self.adv_loss = squared_correlation()
+        self.adv_output = 1
 
-class Br_Net_CF_free_features(Br_Net_adversarial):
-    def __init__(self, alpha, n_classes=2):
-        super().__init__(alpha, n_classes)
+class Br_Net_CF_free_features_corr(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2, conditioning=None):
+        super().__init__(alpha, n_classes, 1, conditioning)
         self.alpha = alpha
         self.name = "Br_Net_CF_free_feature"
         self.mode = "confounder_features"
         self.adversarial = True
+        self.adv_loss = squared_correlation()
+        self.adv_output = 1
 
-class Br_Net_CF_free_features_conditioned(Br_Net_adversarial):
-    def __init__(self, alpha, n_classes=2):
-        super().__init__(alpha, n_classes)
-        self.alpha = alpha
-        self.name = "Br_Net_CF_free_feature_conditioned"
-        self.mode = "confounder_features"
-        self.adversarial = True
-
-class Br_Net_DANN(Br_Net_adversarial):
-    def __init__(self, alpha, n_classes=2):
-        super().__init__(alpha, n_classes)
+class Br_Net_DANN_entropy(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2, conditioning=None):
+        super().__init__(alpha, n_classes, n_classes, conditioning)
         self.alpha = alpha
         self.name = "Br_Net_CF_free_DANN"
         self.mode = "domain_labels"
         self.adversarial = True
+
+class Br_Net_DANN_corr(Br_Net_adversarial):
+    def __init__(self, alpha, n_classes=2, conditioning=None):
+        super().__init__(alpha, n_classes, 1, conditioning)
+        self.alpha = alpha
+        self.name = "Br_Net_CF_free_DANN"
+        self.mode = "domain_labels"
+        self.adversarial = True
+        self.adv_loss = squared_correlation()
+        self.adv_output = 1
 
 class SimpleConv_DANN(nn.Module):
     def __init__(self, alpha):
@@ -269,3 +285,22 @@ class SimpleConv_CF_free(nn.Module):
 
     def get_name(self):
         return "SimpleConv_CF_free"
+
+class squared_correlation(torch.nn.Module):
+    def __init__(self):
+        super(squared_correlation,self).__init__()
+
+    def forward(self, pred, real):
+        real = real.reshape(len(real),1)
+        pred = torch.squeeze(pred)
+        real = torch.squeeze(real)
+        #print(f"\n\n pred is {pred}\n\n")
+        #print(f"\n\n real is {real}\n\n")
+        x = torch.stack((pred, real), dim=0)
+        #print(f"\n\n x is {x}\n\n")
+        corr_matrix = torch.corrcoef(x)
+        #print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
+        #raise Exception
+        corr = - torch.square(corr_matrix[0][1])
+        #print(f"\n\n correlation is {corr}\n\n")
+        return corr

@@ -299,7 +299,7 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0, conditioning=-1):
+    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
         np.random.seed(seed)
         self.x = None
         self.y = None
@@ -313,7 +313,6 @@ class generator:
         self.overlap = overlap
         self.domain = domain
         self.de_correlate_confounder = de_correlate_confounder
-        self.conditioning = conditioning
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -337,7 +336,7 @@ class generator:
 
         n_groups = len(params[0])
         self.domain_labels = np.full((N*n_groups), self.domain)
-        self.confounder_labels = np.full((N*n_groups), -1)
+        self.confounder_labels = np.full((N*n_groups), n_groups)
         self.class_labels = np.full((N*n_groups), -1)
 
 
@@ -351,7 +350,7 @@ class generator:
             # define confounder_labels labels
             if self.de_correlate_confounder == True:
                 # confounding effects between groups, confounder_labels chosen by chance
-                self.confounder_labels[N*g:N*g + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
+                self.confounder_labels[N*g:N*g + confounded_samples] = np.random.randint(0,n_groups, size=confounded_samples)
             else:
                 # confounding effects between groups
                 self.confounder_labels[N*g:N*g + confounded_samples] = np.full((confounded_samples),g)
@@ -367,7 +366,7 @@ class generator:
         # derive cf from confounder_labels-label
         for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
-            if index != -1:
+            if index != n_groups:
                 #print("Index is ",index)
                 cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
             else:
@@ -392,9 +391,12 @@ class generator:
             # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
-        if self.conditioning != -1:
-            self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
-            self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+        self.confounder_features = cf
+
+        # if self.conditioning != -1:
+        #     self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+        #     self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+        #     self.confounder_features[N*self.conditioning:N*(self.conditioning+1)] = -1
 
         if self.debug:
             print("--- generator ---")
@@ -404,7 +406,6 @@ class generator:
 
         self.x = x
         self.y = self.class_labels
-        self.confounder_features = cf
 
 
     def br_net_simple(self, params=None):
@@ -485,12 +486,11 @@ class generator:
 
 
 class train:
-    def __init__(self, mode, model, train_dataloader, device, optimizer, loss_fn):
+    def __init__(self, mode, model, train_dataloader, device, optimizer):
         self.model = model
         self.mode = mode
         self.train_dataloader = train_dataloader
         self.device = device
-        self.loss_fn = loss_fn
         self.accuracy = []
         self.loss = []
         self.optimizer = optimizer
@@ -557,7 +557,7 @@ class train:
 
             # Compute prediction error
             class_pred, domain_pred = self.model(X)
-            loss = self.loss_fn(class_pred, y)
+            loss = self.model.loss(class_pred, y)
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -566,25 +566,25 @@ class train:
         return
 
     def train_adversarial(self):
-        adversarial_loss = self.model.mode
+        adversarial_mode = self.model.mode
         self.model = self.model.to(self.device)
 
         # loss functions
-        class_crossentropy = nn.CrossEntropyLoss()
-        domain_crossentropy = nn.CrossEntropyLoss(ignore_index=-1)
+        class_loss_function = self.model.loss
+        adversarial_loss_function = self.model.adv_loss
 
         self.model.train()
         for batch, (X,label) in enumerate(self.train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
-            adv = label[adversarial_loss].to(self.device)
+            adversary_label = label[adversarial_mode].to(self.device)
             # prediction
-            class_pred, conf_pred = self.model(X)
-
+            class_pred, adversary_pred = self.model(X)
+            adversary_label, adversary_pred = condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
             # compute error
-            class_loss = class_crossentropy(class_pred, y)
-            domain_loss = domain_crossentropy(conf_pred, adv)
-            loss = class_loss + domain_loss
+            class_loss = class_loss_function(class_pred, y)
+            adversary_loss = adversarial_loss_function(adversary_pred, adversary_label)
+            loss = class_loss + adversary_loss
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -647,7 +647,7 @@ class confounder:
             #print("Model:\n",model)
 
 
-    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, conditioning=-1, params=None):
+    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
         iterations = len(test_confounding)
         self.n_classes = len(params[0])
         self.train_x, self.test_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32)), np.empty((iterations,samples*self.n_classes,1,32,32))
@@ -661,7 +661,6 @@ class confounder:
         self.train_confounder_features = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
         self.test_confounder_features = np.empty((iterations,samples*self.n_classes))
 
-        self.conditioning = conditioning
         self.samples = samples
         self.target_domain_samples = target_domain_samples
         self.overlap = overlap
@@ -673,13 +672,11 @@ class confounder:
         self.params = params
 
 
-        if conditioning != -1:
-            self.model_title_add = f"(conditioning={conditioning})"
 
         self.index = test_confounding
 
         # train data
-        g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0, conditioning=conditioning)
+        g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
         g_train_data = g_train.get_data()
         self.train_x[0,:samples*self.n_classes] = g_train_data[0]
         self.train_y[0,:samples*self.n_classes] = g_train_data[1]
@@ -689,7 +686,7 @@ class confounder:
 
         # append target domain_labels data to source domain_labels data
         if target_domain_samples != 0:
-            g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
+            g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
             g_target_domain_data =g_target_domain.get_data()
             self.train_x[0,samples*self.n_classes:] = g_target_domain_data[0]
             self.train_y[0,samples*self.n_classes:] = g_target_domain_data[1]
@@ -717,11 +714,8 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, batch_size=1, hyper_params=None, wandb_init=None):
         name = model.get_name()
-
-        if self.conditioning != -1:
-            name += f" {self.conditioning}"
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -742,7 +736,8 @@ class confounder:
             "epochs":epochs,
             "device": device,
             "optimizer": optimizer,
-            "loss_fn": loss_fn,
+            "loss": model.loss,
+            "adversarial_loss": model.adv_loss,
             "batch_size": batch_size,
             "alpha": model.alpha,
             "lr": hyper_params["lr"],
@@ -781,7 +776,7 @@ class confounder:
         for i in range(0, epochs):
             # load new results
 
-            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, loss_fn)
+            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer)
             t.run()
 
             for cf_var in range(0,len(self.index)):
@@ -793,7 +788,7 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if wandb_init != None:
+                if wandb_init != None and epochs % 10 == 0:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1})
 
                 # register accuracy in use_tune
@@ -981,3 +976,14 @@ def get_dates(file):
     df = [d for d in df]
     df.sort(reverse=True)
     return df
+
+def condition_and_filter(y, real, pred, condition):
+    #assert(real != -1)
+    if condition != None:
+        filtered_real = real[y == condition]
+        filtered_pred = pred[y == condition]
+    else:
+        filtered_real = real
+        filtered_pred = pred
+
+    return filtered_real, filtered_pred
