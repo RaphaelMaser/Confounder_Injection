@@ -47,32 +47,33 @@ wandb_init = {
 }
 
 BrNet_hyperparams = {
-    "lr": 0.0003537,
-    "weight_decay": 0.000001366,
-    "batch_size": 128,
+    "lr": 0.03134,
+    "weight_decay": 0.0003187,
+    "batch_size": 256,
 }
 
 BrNet_CF_free_labels_entropy_hyperparams = {
-    "lr": 0.00008257,
-    "weight_decay": 0.001969,
+    "lr": 0.00005954,
+    "weight_decay": 0.0004026,
     "batch_size": 128,
-    "alpha": 0.9846,
+    "alpha": 0.9134,
 }
 
 BrNet_CF_free_labels_entropy_conditioned_hyperparams = {
-    "lr": 0.00008257,
-    "weight_decay": 0.001969,
+    "lr": 0.0003475,
+    "weight_decay": 0.0001173,
     "batch_size": 128,
-    "alpha": 0.9846,
+    "alpha": 0.7615,
 }
 
 BrNet_CF_free_labels_corr_hyperparams = {
-    "lr": 0.0005194,
-    "weight_decay": 0.000003571,
+    "lr": 0.002979,
+    "weight_decay": 0.00005815,
     "batch_size": 128,
-    "alpha": 0.5483,
+    "alpha": 0.3082,
 }
 
+# hyperparams are chosen randomly (all combinations achieved 50% acc)
 BrNet_CF_free_labels_corr_conditioned_hyperparams = {
     "lr": 0.0005194,
     "weight_decay": 0.000003571,
@@ -81,33 +82,34 @@ BrNet_CF_free_labels_corr_conditioned_hyperparams = {
 }
 
 BrNet_CF_free_features_corr_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+    "lr": 0.0002089,
+    "weight_decay": 0.008821,
+    "batch_size": 64,
+    "alpha": 0.8227,
 }
 
 BrNet_CF_free_features_corr_conditioned_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+    "lr": 0.00008257,
+    "weight_decay": 0.001969,
+    "batch_size": 128,
+    "alpha": 0.9846,
 }
 
 BrNet_DANN_entropy_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+    "lr": 0.02655,
+    "weight_decay": 0.00005211,
+    "batch_size": 128,
+    "alpha": 0.1018,
 }
 
 BrNet_DANN_entropy_conditioned_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+    "lr": 0.0008858,
+    "weight_decay": 0.000009982,
+    "batch_size": 64,
+    "alpha": 0.3772,
 }
 
+## hyperparams are chosen randomly (all combinations achieved 50% acc)
 BrNet_DANN_corr_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
@@ -115,6 +117,7 @@ BrNet_DANN_corr_hyperparams = {
     "alpha": 0.699,
 }
 
+# hyperparams are chosen randomly (all combinations achieved 50% acc)
 BrNet_DANN_corr_conditioned_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
