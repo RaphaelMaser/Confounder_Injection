@@ -61,66 +61,66 @@ def run_tune():
 
 def Br_Net_hyperparams():
     search_space["model"] = Models.Br_Net()
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net"
     run_tune()
 
 def Br_Net_CF_free_labels_entropy_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_labels_entropy(alpha=None)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_entropy"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_CF_free_labels_entropy_conditioned_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=0)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_entropy_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_CF_free_labels_corr_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_labels_corr(alpha=None)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_CF_free_labels_corr_conditioned_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=0)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_CF_free_features_corr_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_features_corr(alpha=None)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_features_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_CF_free_features_corr_conditioned_hyperparams():
     search_space["model"] = Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=0)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_CF_free_features_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_DANN_entropy_hyperparams():
     search_space["model"] = Models.Br_Net_DANN_entropy(alpha=None)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_DANN_entropy"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_DANN_entropy_conditioned_hyperparams():
     search_space["model"] = Models.Br_Net_DANN_entropy(alpha=None, conditioning=0)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_DANN_entropy_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_DANN_corr_hyperparams():
     search_space["model"] = Models.Br_Net_DANN_corr(alpha=None)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_DANN_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def Br_Net_DANN_corr_conditioned_hyperparams():
     search_space["model"] = Models.Br_Net_DANN_corr(alpha=None, conditioning=0)
-    search_space["wandb_init"]["group"] = "Br_Net_CF_free_labels_conditioned"
+    search_space["wandb_init"]["group"] = "Br_Net_DANN_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 

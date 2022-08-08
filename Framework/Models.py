@@ -130,7 +130,7 @@ class Br_Net_adversarial(nn.Module):
         super(Br_Net_adversarial, self).__init__()
         self.alpha = alpha
         self.adversarial = False
-        self.name = None
+        self.name = "Br_Net_adversarial"
         self.mode = None
         self.loss = nn.CrossEntropyLoss()
         self.adv_loss = nn.CrossEntropyLoss()
@@ -176,7 +176,7 @@ class Br_Net_CF_free_labels_entropy(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         super().__init__(alpha, n_classes, n_classes, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_label"
+        self.name = "Br_Net_CF_free_labels_entropy"
         self.mode = "confounder_labels"
         self.adversarial = True
 
@@ -184,7 +184,7 @@ class Br_Net_CF_free_labels_corr(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         super().__init__(alpha, n_classes, 1, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_label"
+        self.name = "Br_Net_CF_free_labels_corr"
         self.mode = "confounder_labels"
         self.adversarial = True
         self.adv_loss = squared_correlation()
@@ -194,7 +194,7 @@ class Br_Net_CF_free_features_corr(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         super().__init__(alpha, n_classes, 1, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_feature"
+        self.name = "Br_Net_CF_free_features_corr"
         self.mode = "confounder_features"
         self.adversarial = True
         self.adv_loss = squared_correlation()
@@ -204,7 +204,7 @@ class Br_Net_DANN_entropy(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         super().__init__(alpha, n_classes, n_classes, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_DANN"
+        self.name = "Br_Net_DANN_entropy"
         self.mode = "domain_labels"
         self.adversarial = True
 
@@ -212,7 +212,7 @@ class Br_Net_DANN_corr(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         super().__init__(alpha, n_classes, 1, conditioning)
         self.alpha = alpha
-        self.name = "Br_Net_CF_free_DANN"
+        self.name = "Br_Net_DANN_corr"
         self.mode = "domain_labels"
         self.adversarial = True
         self.adv_loss = squared_correlation()
