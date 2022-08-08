@@ -174,7 +174,7 @@ class Br_Net_adversarial(nn.Module):
 
 class Br_Net_CF_free_labels_entropy(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
-        super().__init__(alpha, n_classes, n_classes, conditioning)
+        super().__init__(alpha, n_classes, n_classes+1, conditioning)
         self.alpha = alpha
         self.name = "BrNet_CF_free_labels_entropy"
         self.mode = "confounder_labels"

@@ -26,7 +26,7 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 256
+samples = 512
 target_domain_samples = 16
 max_concurrent_trials = 64
 ressources_per_trial = {"cpu":2, "gpu":0}

@@ -169,23 +169,23 @@ if args.experiment_number == 0:
 elif args.experiment_number == 1:
     run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None), BrNet_CF_free_labels_entropy_hyperparams)
 elif args.experiment_number == 2:
-    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=True), BrNet_CF_free_labels_entropy_conditioned_hyperparams)
+    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=0), BrNet_CF_free_labels_entropy_conditioned_hyperparams)
 elif args.experiment_number == 3:
     run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None), BrNet_CF_free_labels_corr_hyperparams)
 elif args.experiment_number == 4:
-    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=True), BrNet_CF_free_labels_corr_conditioned_hyperparams)
+    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=0), BrNet_CF_free_labels_corr_conditioned_hyperparams)
 elif args.experiment_number == 5:
     run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None), BrNet_CF_free_features_corr_hyperparams)
 elif args.experiment_number == 6:
-    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=True), BrNet_CF_free_features_corr_conditioned_hyperparams)
+    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=0), BrNet_CF_free_features_corr_conditioned_hyperparams)
 elif args.experiment_number == 7:
     run_experiments(Models.Br_Net_DANN_entropy(alpha=None), BrNet_DANN_entropy_hyperparams)
 elif args.experiment_number == 8:
-    run_experiments(Models.Br_Net_DANN_entropy(alpha=None, conditioning=True),BrNet_DANN_entropy_conditioned_hyperparams)
+    run_experiments(Models.Br_Net_DANN_entropy(alpha=None, conditioning=0),BrNet_DANN_entropy_conditioned_hyperparams)
 elif args.experiment_number == 9:
     run_experiments(Models.Br_Net_DANN_corr(alpha=None), BrNet_DANN_corr_hyperparams)
 elif args.experiment_number == 10:
-    run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=True), BrNet_DANN_corr_conditioned_hyperparams)
+    run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=0), BrNet_DANN_corr_conditioned_hyperparams)
 
 
 
