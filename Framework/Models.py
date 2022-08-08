@@ -169,8 +169,8 @@ class Br_Net_adversarial(nn.Module):
 
     def get_name(self):
         if self.conditioning != None:
-            return "BrNet_CF_free" + f"_conditioned_{self.conditioning}"
-        return "BrNet_CF_free"
+            return self.name + f"_conditioned_{self.conditioning}"
+        return self.name
 
 class Br_Net_CF_free_labels_entropy(Br_Net_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
