@@ -728,8 +728,10 @@ class confounder:
                 wandb_init["project"] = "None"
             if "group" not in wandb_init:
                 wandb_init["group"] = "None"
-            if "time" not in wandb_init:
-                wandb_init["time"] = "None"
+            if "date" not in wandb_init:
+                wandb_init["date"] = "None"
+            if "batch_date" not in wandb_init:
+                wandb_init["batch_date"] = "None"
 
         config = {
             "model":name,
@@ -751,10 +753,11 @@ class confounder:
             "de_correlate_confounder_test": self.de_correlate_confounder_test,
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
+            "date": wandb_init["date"],
+            "batch_date": wandb_init["batch_date"],
         }
 
         if wandb_init != None:
-            config["date"] = wandb_init["time"]
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"])
 
         delta_t = time.time()

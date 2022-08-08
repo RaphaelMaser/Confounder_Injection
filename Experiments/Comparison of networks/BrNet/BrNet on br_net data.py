@@ -42,80 +42,80 @@ t = f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"
 
 wandb_init = {
     "project": "BrNet on br_net data",
-    "time": t,
+    "date": t,
     "group": "BrNet",
 }
 
-Br_Net_hyperparams = {
+BrNet_hyperparams = {
     "lr": 0.0003537,
     "weight_decay": 0.000001366,
     "batch_size": 128,
 }
 
-Br_Net_CF_free_labels_entropy_hyperparams = {
+BrNet_CF_free_labels_entropy_hyperparams = {
     "lr": 0.00008257,
     "weight_decay": 0.001969,
     "batch_size": 128,
     "alpha": 0.9846,
 }
 
-Br_Net_CF_free_labels_entropy_conditioned_hyperparams = {
+BrNet_CF_free_labels_entropy_conditioned_hyperparams = {
     "lr": 0.00008257,
     "weight_decay": 0.001969,
     "batch_size": 128,
     "alpha": 0.9846,
 }
 
-Br_Net_CF_free_labels_corr_hyperparams = {
+BrNet_CF_free_labels_corr_hyperparams = {
     "lr": 0.0005194,
     "weight_decay": 0.000003571,
     "batch_size": 128,
     "alpha": 0.5483,
 }
 
-Br_Net_CF_free_labels_corr_conditioned_hyperparams = {
+BrNet_CF_free_labels_corr_conditioned_hyperparams = {
     "lr": 0.0005194,
     "weight_decay": 0.000003571,
     "batch_size": 128,
     "alpha": 0.5483,
 }
 
-Br_Net_CF_free_features_corr_hyperparams = {
+BrNet_CF_free_features_corr_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
     "alpha": 0.699,
 }
 
-Br_Net_CF_free_features_corr_conditioned_hyperparams = {
+BrNet_CF_free_features_corr_conditioned_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
     "alpha": 0.699,
 }
 
-Br_Net_DANN_entropy_hyperparams = {
+BrNet_DANN_entropy_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
     "alpha": 0.699,
 }
 
-Br_Net_DANN_entropy_conditioned_hyperparams = {
+BrNet_DANN_entropy_conditioned_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
     "alpha": 0.699,
 }
 
-Br_Net_DANN_corr_hyperparams = {
+BrNet_DANN_corr_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
     "alpha": 0.699,
 }
 
-Br_Net_DANN_corr_conditioned_hyperparams = {
+BrNet_DANN_corr_conditioned_hyperparams = {
     "lr": 0.000495,
     "weight_decay": 0.00003478,
     "batch_size": 256,
@@ -123,50 +123,48 @@ Br_Net_DANN_corr_conditioned_hyperparams = {
 }
 
 def run_experiments(model):
+    model_name = model.get_name() + "_hyperparams"
+    hyperparams = eval(model_name)
+    if "alpha" in hyperparams:
+        model.alpha = hyperparams["alpha"]
 
     # target_domain_unconfounded_test_unconfounded_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0], params=params)
-    model_name = model.get_name() + "_hyperparams"
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=model_name["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':model_name["lr"], 'weight_decay':model_name["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_unconfounded_test_confounded_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params)
-    model_name = model.get_name() + "_hyperparams"
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=model_name["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':model_name["lr"], 'weight_decay':model_name["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_confounded_decorrelated_0_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
-    model_name = model.get_name() + "_hyperparams"
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=model_name["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':model_name["lr"], 'weight_decay':model_name["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
 
     # target_domain_confounded_decorrelated_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
-    model_name = model.get_name() + "_hyperparams"
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=model_name["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':model_name["lr"], 'weight_decay':model_name["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_confounded_decorrelated_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
-    model_name = model.get_name() + "_hyperparams"
-    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=model_name["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':model_name["lr"], 'weight_decay':model_name["weight_decay"]})
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('experiment_number', type=int, help="Define the number of experiment to execute")
-parser.add_argument('date', type=str, help="Define the date")
+parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
+parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
-wandb_init["batch_time"] = args.date
+wandb_init["batch_date"] = args.date
 
 if args.experiment_number == 0:
     run_experiments(Models.Br_Net())
 elif args.experiment_number == 1:
-
     run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None))
 elif args.experiment_number == 2:
     run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=True))
