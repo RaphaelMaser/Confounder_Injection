@@ -125,9 +125,8 @@ BrNet_DANN_corr_conditioned_hyperparams = {
     "alpha": 0.699,
 }
 
-def run_experiments(model):
+def run_experiments(model, hyperparams):
     model_name = model.get_name() + "_hyperparams"
-    hyperparams = eval(model_name)
     if "alpha" in hyperparams:
         model.alpha = hyperparams["alpha"]
 
@@ -166,27 +165,27 @@ args = parser.parse_args()
 wandb_init["batch_date"] = args.date
 
 if args.experiment_number == 0:
-    run_experiments(Models.Br_Net())
+    run_experiments(Models.Br_Net(), BrNet_hyperparams)
 elif args.experiment_number == 1:
-    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None))
+    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None), BrNet_CF_free_labels_entropy_hyperparams)
 elif args.experiment_number == 2:
-    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=True))
+    run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=True), BrNet_CF_free_labels_entropy_conditioned_hyperparams)
 elif args.experiment_number == 3:
-    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None))
+    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None), BrNet_CF_free_labels_corr_hyperparams)
 elif args.experiment_number == 4:
-    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=True))
+    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=True), BrNet_CF_free_labels_corr_conditioned_hyperparams)
 elif args.experiment_number == 5:
-    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None))
+    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None), BrNet_CF_free_features_corr_hyperparams)
 elif args.experiment_number == 6:
-    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=True))
+    run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=True), BrNet_CF_free_features_corr_conditioned_hyperparams)
 elif args.experiment_number == 7:
-    run_experiments(Models.Br_Net_DANN_entropy(alpha=None))
+    run_experiments(Models.Br_Net_DANN_entropy(alpha=None), BrNet_DANN_entropy_hyperparams)
 elif args.experiment_number == 8:
-    run_experiments(Models.Br_Net_DANN_entropy(alpha=None, conditioning=True))
+    run_experiments(Models.Br_Net_DANN_entropy(alpha=None, conditioning=True),BrNet_DANN_entropy_conditioned_hyperparams)
 elif args.experiment_number == 9:
-    run_experiments(Models.Br_Net_DANN_corr(alpha=None))
+    run_experiments(Models.Br_Net_DANN_corr(alpha=None), BrNet_DANN_corr_hyperparams)
 elif args.experiment_number == 10:
-    run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=True))
+    run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=True), BrNet_DANN_corr_conditioned_hyperparams)
 
 
 
