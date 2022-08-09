@@ -47,83 +47,83 @@ wandb_init = {
 }
 
 BrNet_hyperparams = {
-    "lr": 0.03134,
-    "weight_decay": 0.0003187,
+    "lr": 0.001068,
+    "weight_decay": 0.00002113,
     "batch_size": 256,
 }
 
 BrNet_CF_free_labels_entropy_hyperparams = {
-    "lr": 0.00005954,
-    "weight_decay": 0.0004026,
-    "batch_size": 128,
-    "alpha": 0.9134,
-}
-
-BrNet_CF_free_labels_entropy_conditioned_hyperparams = {
-    "lr": 0.0003475,
-    "weight_decay": 0.0001173,
-    "batch_size": 128,
-    "alpha": 0.7615,
-}
-
-BrNet_CF_free_labels_corr_hyperparams = {
-    "lr": 0.002979,
-    "weight_decay": 0.00005815,
-    "batch_size": 128,
-    "alpha": 0.3082,
-}
-
-# hyperparams are chosen randomly (all combinations achieved 50% acc)
-BrNet_CF_free_labels_corr_conditioned_hyperparams = {
-    "lr": 0.0005194,
-    "weight_decay": 0.000003571,
-    "batch_size": 128,
-    "alpha": 0.5483,
-}
-
-BrNet_CF_free_features_corr_hyperparams = {
-    "lr": 0.0002089,
-    "weight_decay": 0.008821,
-    "batch_size": 64,
-    "alpha": 0.8227,
-}
-
-BrNet_CF_free_features_corr_conditioned_hyperparams = {
     "lr": 0.00008257,
     "weight_decay": 0.001969,
     "batch_size": 128,
     "alpha": 0.9846,
 }
 
-BrNet_DANN_entropy_hyperparams = {
-    "lr": 0.02655,
-    "weight_decay": 0.00005211,
+BrNet_CF_free_labels_entropy_conditioned_hyperparams = {
+    "lr": 0.00006771,
+    "weight_decay": 0.0001822,
     "batch_size": 128,
-    "alpha": 0.1018,
+    "alpha": 0.9776,
 }
 
-BrNet_DANN_entropy_conditioned_hyperparams = {
-    "lr": 0.0008858,
-    "weight_decay": 0.000009982,
-    "batch_size": 64,
-    "alpha": 0.3772,
-}
-
-## hyperparams are chosen randomly (all combinations achieved 50% acc)
-BrNet_DANN_corr_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+BrNet_CF_free_labels_corr_hyperparams = {
+    "lr": 0.00004542,
+    "weight_decay": 0.000001794,
+    "batch_size": 128,
+    "alpha": 0.5094,
 }
 
 # hyperparams are chosen randomly (all combinations achieved 50% acc)
-BrNet_DANN_corr_conditioned_hyperparams = {
-    "lr": 0.000495,
-    "weight_decay": 0.00003478,
-    "batch_size": 256,
-    "alpha": 0.699,
+# BrNet_CF_free_labels_corr_conditioned_hyperparams = {
+#     "lr": 0.0005194,
+#     "weight_decay": 0.000003571,
+#     "batch_size": 128,
+#     "alpha": 0.5483,
+# }
+
+BrNet_CF_free_features_corr_hyperparams = {
+    "lr": 0.00008482,
+    "weight_decay": 0.00999,
+    "batch_size": 128,
+    "alpha": 0.8898,
 }
+
+BrNet_CF_free_features_corr_conditioned_hyperparams = {
+    "lr": 0.00002901,
+    "weight_decay": 0.00006131,
+    "batch_size": 256,
+    "alpha": 0.8677,
+}
+
+BrNet_DANN_entropy_hyperparams = {
+    "lr": 0.006242,
+    "weight_decay": 0.000007058,
+    "batch_size": 128,
+    "alpha": 0.8997,
+}
+
+BrNet_DANN_entropy_conditioned_hyperparams = {
+    "lr": 0.0003133,
+    "weight_decay": 0.00001072,
+    "batch_size": 64,
+    "alpha": 0.143,
+}
+
+# hyperparams are chosen randomly (all combinations achieved 50% acc)
+# BrNet_DANN_corr_hyperparams = {
+#     "lr": 0.000495,
+#     "weight_decay": 0.00003478,
+#     "batch_size": 256,
+#     "alpha": 0.699,
+# }
+
+# hyperparams are chosen randomly (all combinations achieved 50% acc)
+# BrNet_DANN_corr_conditioned_hyperparams = {
+#     "lr": 0.000495,
+#     "weight_decay": 0.00003478,
+#     "batch_size": 256,
+#     "alpha": 0.699,
+# }
 
 def run_experiments(model, hyperparams):
     model_name = model.get_name() + "_hyperparams"
@@ -172,20 +172,20 @@ elif args.experiment_number == 2:
     run_experiments(Models.Br_Net_CF_free_labels_entropy(alpha=None, conditioning=0), BrNet_CF_free_labels_entropy_conditioned_hyperparams)
 elif args.experiment_number == 3:
     run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None), BrNet_CF_free_labels_corr_hyperparams)
+#elif args.experiment_number == 4:
+    #run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=0), BrNet_CF_free_labels_corr_conditioned_hyperparams)
 elif args.experiment_number == 4:
-    run_experiments(Models.Br_Net_CF_free_labels_corr(alpha=None, conditioning=0), BrNet_CF_free_labels_corr_conditioned_hyperparams)
-elif args.experiment_number == 5:
     run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None), BrNet_CF_free_features_corr_hyperparams)
-elif args.experiment_number == 6:
+elif args.experiment_number == 5:
     run_experiments(Models.Br_Net_CF_free_features_corr(alpha=None, conditioning=0), BrNet_CF_free_features_corr_conditioned_hyperparams)
-elif args.experiment_number == 7:
+elif args.experiment_number == 6:
     run_experiments(Models.Br_Net_DANN_entropy(alpha=None), BrNet_DANN_entropy_hyperparams)
-elif args.experiment_number == 8:
+elif args.experiment_number == 7:
     run_experiments(Models.Br_Net_DANN_entropy(alpha=None, conditioning=0),BrNet_DANN_entropy_conditioned_hyperparams)
-elif args.experiment_number == 9:
-    run_experiments(Models.Br_Net_DANN_corr(alpha=None), BrNet_DANN_corr_hyperparams)
-elif args.experiment_number == 10:
-    run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=0), BrNet_DANN_corr_conditioned_hyperparams)
+#elif args.experiment_number == 9:
+    #run_experiments(Models.Br_Net_DANN_corr(alpha=None), BrNet_DANN_corr_hyperparams)
+#elif args.experiment_number == 10:
+    #run_experiments(Models.Br_Net_DANN_corr(alpha=None, conditioning=0), BrNet_DANN_corr_conditioned_hyperparams)
 
 
 
