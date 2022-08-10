@@ -508,7 +508,7 @@ class train:
                 y = label["y"].to(self.device)
                 conf = label["confounder_labels"].to(self.device)
 
-                class_pred, domain_pred = self.model(X)
+                class_pred, adv_pred = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
                 classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
                 confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
@@ -973,9 +973,9 @@ def sync_wandb_data(project=None):
     runs_df.to_json(f"{project}.json")
     print(f"Syncing took {time.time() - t} seconds")
 
-def get_dates(file):
+def get_from_table(file, string):
     df = pd.read_json(file)
-    df = {d["date"] for d in df["config"]}
+    df = {d[string] for d in df["config"]}
     df = [d for d in df]
     df.sort(reverse=True)
     return df

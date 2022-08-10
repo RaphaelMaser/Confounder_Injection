@@ -126,7 +126,6 @@ BrNet_DANN_entropy_conditioned_hyperparams = {
 # }
 
 def run_experiments(model, hyperparams):
-    model_name = model.get_name() + "_hyperparams"
     if "alpha" in hyperparams:
         model.alpha = hyperparams["alpha"]
 
@@ -145,13 +144,12 @@ def run_experiments(model, hyperparams):
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
-
     # target_domain_confounded_decorrelated_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
-    # target_domain_confounded_decorrelated_16_samples
+    # target_domain_confounded_decorrelated_128_samples
     c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})

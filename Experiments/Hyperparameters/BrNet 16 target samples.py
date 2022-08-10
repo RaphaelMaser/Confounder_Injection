@@ -126,8 +126,10 @@ def Br_Net_DANN_corr_conditioned_hyperparams():
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('experiment_number', type=int, help="Define the number of experiment to execute")
+parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
+parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
+search_space["wandb_init"]["batch_date"] = args.date
 
 if args.experiment_number == 0:
     Br_Net_hyperparams()
