@@ -608,9 +608,8 @@ class confounder:
     t = None
     def __init__(self, seed=41, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
         torch.backends.cudnn.benchmark = True
-        np.random.seed(seed)
-        torch.manual_seed(seed)
         self.mode = mode
+        self.seed = seed
         self.test_dataloader = []
         self.train_dataloader = None
 
@@ -646,8 +645,13 @@ class confounder:
             print("--- constructor ---")
             #print("Model:\n",model)
 
+    def reset_seed(self):
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
 
     def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
+        self.reset_seed()
+
         iterations = len(test_confounding)
         self.n_classes = len(params[0])
         self.train_x, self.test_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32)), np.empty((iterations,samples*self.n_classes,1,32,32))
@@ -715,6 +719,7 @@ class confounder:
 
 
     def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, batch_size=1, hyper_params=None, wandb_init=None):
+        self.reset_seed()
         name = model.get_name()
 
         if device == "cuda":

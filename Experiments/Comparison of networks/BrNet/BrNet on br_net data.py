@@ -130,27 +130,27 @@ def run_experiments(model, hyperparams):
         model.alpha = hyperparams["alpha"]
     # TODO change seed again
     # target_domain_unconfounded_test_unconfounded_16_samples
-    c = CI.confounder(seed= 40, clean_results=True, start_timer=True)
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0], params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_unconfounded_test_confounded_16_samples
-    c = CI.confounder(seed= 40, clean_results=True, start_timer=True)
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[1], params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_confounded_decorrelated_0_samples
-    c = CI.confounder(seed= 40, clean_results=True, start_timer=True)
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_confounded_decorrelated_16_samples
-    c = CI.confounder(seed= 40, clean_results=True, start_timer=True)
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
     # target_domain_confounded_decorrelated_128_samples
-    c = CI.confounder(seed= 40, clean_results=True, start_timer=True)
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=128, target_domain_confounding=1, de_correlate_confounder_target=True, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=True, params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, batch_size=hyperparams["batch_size"], optimizer=torch.optim.Adam, hyper_params={'lr':hyperparams["lr"], 'weight_decay':hyperparams["weight_decay"]})
 
