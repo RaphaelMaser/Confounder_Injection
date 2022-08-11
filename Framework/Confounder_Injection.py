@@ -817,9 +817,9 @@ class confounder:
                 results["confounder_accuracy"].append(confounder_accuracy)
 
                 if wandb_init != None and (i % 100) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
-                elif wandb_init != None and (i % 10) == 0:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+                elif wandb_init != None and (i % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
 
                 # register accuracy in use_tune
                 if use_tune:
