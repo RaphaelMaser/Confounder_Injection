@@ -3,9 +3,13 @@ from Framework.Layers import GradientReversal
 from scipy import stats
 import torch
 
+def reset_seed():
+    torch.manual_seed(42)
+
 # Building a Neural Network architecture
 class NeuralNetwork(nn.Module):
     def __init__(self, input_size):
+        reset_seed()
         super(NeuralNetwork, self).__init__()
         self.alpha = None
         self.flatten = nn.Flatten()
@@ -34,6 +38,7 @@ class NeuralNetwork(nn.Module):
 # Building a Neural Network architecture
 class SimpleConv(nn.Module):
     def __init__(self):
+        reset_seed()
         super(SimpleConv, self).__init__()
         self.alpha = None
         self.linear_relu_stack = nn.Sequential(
@@ -59,6 +64,7 @@ class SimpleConv(nn.Module):
 # Building a Neural Network architecture
 class LeNet_5(nn.Module):
     def __init__(self):
+        reset_seed()
         super(LeNet_5, self).__init__()
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
@@ -93,6 +99,7 @@ class LeNet_5(nn.Module):
 # Building a Neural Network architecture
 class BrNet(nn.Module):
     def __init__(self, n_classes=2):
+        reset_seed()
         super(BrNet, self).__init__()
         self.alpha = None
         self.adversarial = False
@@ -127,6 +134,7 @@ class BrNet(nn.Module):
 
 class BrNet_adversarial(nn.Module):
     def __init__(self, alpha, class_output, adv_output, conditioning=None):
+        reset_seed()
         super(BrNet_adversarial, self).__init__()
         self.alpha = alpha
         self.adversarial = False
@@ -174,6 +182,7 @@ class BrNet_adversarial(nn.Module):
 
 class BrNet_CF_free_labels_entropy(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, n_classes, n_classes+1, conditioning)
         self.name = "BrNet_CF_free_labels_entropy"
         self.mode = "confounder_labels"
@@ -181,6 +190,7 @@ class BrNet_CF_free_labels_entropy(BrNet_adversarial):
 
 class BrNet_CF_free_labels_corr(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, n_classes, 1, conditioning)
         self.name = "BrNet_CF_free_labels_corr"
         self.mode = "confounder_labels"
@@ -190,6 +200,7 @@ class BrNet_CF_free_labels_corr(BrNet_adversarial):
 
 class BrNet_CF_free_features_corr(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, n_classes, 1, conditioning)
         self.name = "BrNet_CF_free_features_corr"
         self.mode = "confounder_features"
@@ -199,6 +210,7 @@ class BrNet_CF_free_features_corr(BrNet_adversarial):
 
 class BrNet_DANN_entropy(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, n_classes, 2, conditioning)
         self.name = "BrNet_DANN_entropy"
         self.mode = "domain_labels"
@@ -206,6 +218,7 @@ class BrNet_DANN_entropy(BrNet_adversarial):
 
 class BrNet_DANN_corr(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, n_classes, 1, conditioning)
         self.name = "BrNet_DANN_corr"
         self.mode = "domain_labels"
@@ -215,6 +228,7 @@ class BrNet_DANN_corr(BrNet_adversarial):
 
 class BrNet_adversarial_double(nn.Module):
     def __init__(self, alpha, alpha2, class_output, adv1_output, adv2_output, conditioning=None):
+        reset_seed()
         super(BrNet_adversarial_double, self).__init__()
         self.alpha = alpha
         self.alpha2 = alpha2
@@ -270,6 +284,7 @@ class BrNet_adversarial_double(nn.Module):
 
 class BrNet_CF_free_DANN_labels_entropy(BrNet_adversarial_double):
     def __init__(self, alpha, alpha2, n_classes=2, conditioning=None):
+        reset_seed()
         super().__init__(alpha, alpha2, n_classes, 2, n_classes+1, conditioning)
         self.name = "BrNet_CF_free_DANN_labels_entropy"
         self.mode = "domain_labels"
@@ -278,6 +293,7 @@ class BrNet_CF_free_DANN_labels_entropy(BrNet_adversarial_double):
         self.adv_output = 1
 
 class BrNet_CF_free_DANN_labels_entropy_features_corr(BrNet_adversarial_double):
+    reset_seed()
     def __init__(self, alpha, alpha2, n_classes=2, conditioning=None):
         super().__init__(alpha, alpha2, n_classes, 2, 1, conditioning)
         self.name = "BrNet_CF_free_DANN_labels_entropy_features_corr"
@@ -292,6 +308,7 @@ class BrNet_CF_free_DANN_labels_entropy_features_corr(BrNet_adversarial_double):
 class SimpleConv_DANN(nn.Module):
     def __init__(self, alpha):
         super(SimpleConv_DANN, self).__init__()
+        reset_seed()
         self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
@@ -326,6 +343,7 @@ class SimpleConv_DANN(nn.Module):
 class SimpleConv_CF_free(nn.Module):
     def __init__(self, alpha):
         super(SimpleConv_CF_free, self).__init__()
+        reset_seed()
         self.alpha = alpha
         self.linear_relu_stack = nn.Sequential(
             nn.Conv2d(1, 6, kernel_size=5),
