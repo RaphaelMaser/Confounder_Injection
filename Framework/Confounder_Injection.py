@@ -508,7 +508,7 @@ class train:
                 y = label["y"].to(self.device)
                 conf = label["confounder_labels"].to(self.device)
 
-                class_pred, adv_pred = self.model(X)
+                class_pred, _, _ = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
                 classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
                 confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
@@ -521,31 +521,6 @@ class train:
 
         return classification_accuracy, confounder_accuracy
 
-    # def test_DANN(self):
-    #     size = len(self.test_dataloader.dataset)
-    #     confounder_size = self.test_dataloader.dataset.confounder_size()
-    #     num_batches = len(self.test_dataloader)
-    #     self.model.eval()
-    #     classification_accuracy, confounder_accuracy = 0, 0
-    #     with torch.no_grad():
-    #         for X,label in self.test_dataloader:
-    #             X = X.to(self.device)
-    #             y = label["y"].to(self.device)
-    #             conf = label["confounder_labels"].to(self.device)
-    #
-    #             class_pred, domain_pred = self.model(X)
-    #             #test_loss += self.loss_fn(class_pred, label["y"]).item()
-    #             classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
-    #             confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
-    #     #test_loss /= num_batches
-    #     classification_accuracy /= size
-    #     if confounder_size <= 0:
-    #         confounder_accuracy = None
-    #     else:
-    #         confounder_accuracy /= confounder_size
-    #
-    #     return classification_accuracy, confounder_accuracy
-
 
     def train_normal(self):
         self.model = self.model.to(self.device)
@@ -556,7 +531,7 @@ class train:
             y = label["y"].to(self.device)
 
             # Compute prediction error
-            class_pred, domain_pred = self.model(X)
+            class_pred, _, _ = self.model(X)
             loss = self.model.loss(class_pred, y)
 
             # Backpropagation
@@ -578,9 +553,11 @@ class train:
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adversary_label = label[adversarial_mode].to(self.device)
+
             # prediction
-            class_pred, adversary_pred = self.model(X)
+            class_pred, adversary_pred, _ = self.model(X)
             adversary_label, adversary_pred = condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
+
             # compute error
             class_loss = class_loss_function(class_pred, y)
             adversary_loss = adversarial_loss_function(adversary_pred, adversary_label)
@@ -593,13 +570,48 @@ class train:
             self.optimizer.step()
         return
 
+    def train_adversarial_double(self):
+        adversary_mode = self.model.mode
+        adversary2_mode = self.model.mode2
+        self.model = self.model.to(self.device)
+
+        # loss functions
+        class_loss_function = self.model.loss
+        adversary_loss_function = self.model.adv_loss
+        adversary2_loss_function = self.model.adv2_loss
+
+        self.model.train()
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            X = X.to(self.device)
+            y = label["y"].to(self.device)
+            adversary_label = label[adversary_mode].to(self.device)
+            adversary2_label = label[adversary2_mode].to(self.device)
+
+            # prediction
+            class_pred, adversary_pred, adversary2_pred = self.model(X)
+            adversary_label, adversary_pred, adversary2_label, adversary2_pred = condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
+
+            # compute error
+            class_loss = class_loss_function(class_pred, y)
+            adversary_loss = adversary_loss_function(adversary_pred, adversary_label)
+            adversary2_loss = adversary2_loss_function(adversary2_pred, adversary2_label)
+            loss = class_loss + adversary_loss + adversary2_loss
+
+            # Backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+        return
+
     def run(self):
         if self.model.adversarial:
-            self.train_adversarial()
+            if isinstance(self.model, Models.BrNet_adversarial_double):
+                self.train_adversarial_double()
+            else:
+                self.train_adversarial()
         else:
             self.train_normal()
 
-        #accuracy, loss = self.test()
         return
 
 
@@ -763,6 +775,13 @@ class confounder:
             "seed": self.seed,
         }
 
+        if hasattr(model, "conditioning"):
+            config["conditioning"]: model.conditioning
+        if hasattr(model, "mode"):
+            config["adversary_mode"] = model.mode
+        if hasattr(model, "mode2"):
+            config["adversary2_mode"] = model.mode2
+
         if wandb_init != None:
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"])
 
@@ -820,7 +839,10 @@ class confounder:
 
     #@wandb_mixin
     def train_tune(self, config):
-        config["model"].alpha = config["alpha"]
+        if "alpha" in config:
+            config["model"].alpha = config["alpha"]
+        if "alpha2" in config:
+            config["model"].alpha2 = config["alpha2"]
         self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
         return
@@ -974,7 +996,7 @@ def sync_wandb_data(project=None):
         "name": name_list
     })
 
-    runs_df.to_csv(f"{project}.csv")
+    #runs_df.to_csv(f"{project}.csv")
     #runs_df.to_pickle(f"{project}.pkl")
     runs_df.to_json(f"{project}.json")
     print(f"Syncing took {time.time() - t} seconds")
@@ -996,3 +1018,18 @@ def condition_and_filter(y, real, pred, condition):
         filtered_pred = pred
 
     return filtered_real, filtered_pred
+
+def condition_and_filter_double(y, real, pred, real2, pred2, condition):
+    #assert(real != -1)
+    if condition != None:
+        filtered_real = real[y == condition]
+        filtered_pred = pred[y == condition]
+        filtered_real2 = real2[y == condition]
+        filtered_pred2 = pred2[y == condition]
+    else:
+        filtered_real = real
+        filtered_pred = pred
+        filtered_real2 = real2
+        filtered_pred2 = pred2
+
+    return filtered_real, filtered_pred, filtered_real2, filtered_pred2

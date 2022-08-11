@@ -53,7 +53,7 @@ search_space = {
 
 ##
 c = CI.confounder()
-model = Models.Br_Net()
+model = Models.BrNet()
 search_space["model"] = model
 #search_space["wandb_init"]["group"] = "BrNet"
 
