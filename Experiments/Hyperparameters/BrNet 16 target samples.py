@@ -26,7 +26,7 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 1000
-samples = 64
+samples = 1
 target_domain_samples = 16
 max_concurrent_trials = 64
 ressources_per_trial = {"cpu":2, "gpu":0}
@@ -191,4 +191,6 @@ elif number == 13:
 elif number == 14:
     BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-time.sleep(60*20)
+for i in range(0,20):
+    print(f"Waited for {i} minutes")
+    time.sleep(60)
