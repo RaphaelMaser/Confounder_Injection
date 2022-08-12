@@ -187,39 +187,41 @@ def run_experiments(model, hyperparams):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
+parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
+number = args.experiment_number + 10*args.experiment_number_add
 wandb_init["batch_date"] = args.date
 
-if args.experiment_number == 0:
+if number == 0:
     run_experiments(Models.BrNet(), BrNet_hyperparams)
-elif args.experiment_number == 1:
+elif number == 1:
     run_experiments(Models.BrNet_CF_free_labels_entropy(alpha=None), BrNet_CF_free_labels_entropy_hyperparams)
-elif args.experiment_number == 2:
+elif number == 2:
     run_experiments(Models.BrNet_CF_free_labels_entropy(alpha=None, conditioning=0), BrNet_CF_free_labels_entropy_conditioned_hyperparams)
-elif args.experiment_number == 3:
+elif number == 3:
     run_experiments(Models.BrNet_CF_free_labels_corr(alpha=None), BrNet_CF_free_labels_corr_hyperparams)
-elif args.experiment_number == 4:
+elif number == 4:
     run_experiments(Models.BrNet_CF_free_labels_corr(alpha=None, conditioning=0), BrNet_CF_free_labels_corr_conditioned_hyperparams)
-elif args.experiment_number == 5:
+elif number == 5:
     run_experiments(Models.BrNet_CF_free_features_corr(alpha=None), BrNet_CF_free_features_corr_hyperparams)
-elif args.experiment_number == 6:
+elif number == 6:
     run_experiments(Models.BrNet_CF_free_features_corr(alpha=None, conditioning=0), BrNet_CF_free_features_corr_conditioned_hyperparams)
-elif args.experiment_number == 7:
+elif number == 7:
     run_experiments(Models.BrNet_DANN_entropy(alpha=None), BrNet_DANN_entropy_hyperparams)
-elif args.experiment_number == 8:
+elif number == 8:
     run_experiments(Models.BrNet_DANN_entropy(alpha=None, conditioning=0), BrNet_DANN_entropy_conditioned_hyperparams)
-elif args.experiment_number == 9:
+elif number == 9:
     run_experiments(Models.BrNet_DANN_corr(alpha=None), BrNet_DANN_corr_hyperparams)
-elif args.experiment_number == 10:
+elif number == 10:
     run_experiments(Models.BrNet_DANN_corr(alpha=None, conditioning=0), BrNet_DANN_corr_conditioned_hyperparams)
-elif args.experiment_number == 11:
+elif number == 11:
     run_experiments(Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None), BrNet_CF_free_DANN_labels_entropy_hyperparams)
-elif args.experiment_number == 12:
+elif number == 12:
     run_experiments(Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None, conditioning=0), BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams)
-elif args.experiment_number == 13:
+elif number == 13:
     run_experiments(Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None), BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams)
-elif args.experiment_number == 14:
+elif number == 14:
     run_experiments(Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None, conditioning=0), BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams)
 
 
