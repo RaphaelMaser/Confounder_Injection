@@ -154,7 +154,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune()
 
 os.environ['WANDB_MODE'] = 'offline'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = 1
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
