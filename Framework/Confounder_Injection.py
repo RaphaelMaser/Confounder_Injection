@@ -788,7 +788,7 @@ class confounder:
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
-
+        wandb_results = {}
 
         if hyper_params == None:
             raise AssertionError("Choose some hyperparameter for the optimizer")
@@ -816,10 +816,10 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                #if wandb_init != None and (i % epochs) == 0:
-                #    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                #elif wandb_init != None and (i % 10) == 0:
-                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
+                if wandb_init != None and ((i+1) % epochs) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+                elif wandb_init != None and (i % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
 
                 # register accuracy in use_tune
                 if use_tune:
@@ -827,7 +827,7 @@ class confounder:
                     tune.report(mean_accuracy=classification_accuracy)
 
         if wandb_init != None:
-            wandb.log(commit=True)
+            #wandb.log()
             wandb.config.update({"trained_model": self.model},allow_val_change=True)
             wandb.finish()
         self.results = pd.DataFrame(results)
