@@ -29,8 +29,8 @@ e = datetime.datetime.now()
 epochs = 10000
 samples = 128
 target_domain_samples = 16
-max_concurrent_trials = 64
-ressources_per_trial = {"cpu":2, "gpu":0}
+max_concurrent_trials = 1
+ressources_per_trial = {"cpu":128, "gpu":0}
 
 search_space = {
     "epochs":epochs,
