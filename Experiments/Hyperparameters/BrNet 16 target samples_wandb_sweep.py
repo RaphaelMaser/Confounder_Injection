@@ -180,7 +180,7 @@ parser.add_argument('-i', action="store", type=int, dest="experiment_number", he
 parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
-#search_space["parameters"]["wandb_init"]["batch_date"] = args.date
+wandb_init["batch_date"] = args.date
 
 number = args.experiment_number + 10*args.experiment_number_add
 if number == 0:
