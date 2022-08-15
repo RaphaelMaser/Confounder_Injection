@@ -22,7 +22,7 @@ e = datetime.datetime.now()
 epochs = 10000
 samples = 128
 target_domain_samples = 16
-max_concurrent_trials = 1
+#max_concurrent_trials = 1
 #ressources_per_trial = {"cpu":8, "gpu":0}
 
 
@@ -50,7 +50,7 @@ def run_tune():
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 def BrNet_hyperparams():
