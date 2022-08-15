@@ -156,6 +156,7 @@ parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
 ray.init(num_cpus=args.cpus)
+ressources_per_trial = {"cpu":args.cpus, "gpu":0}
 
 # run experiments
 BrNet_hyperparams()
