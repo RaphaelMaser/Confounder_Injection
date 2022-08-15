@@ -26,6 +26,7 @@ max_concurrent_trials = 1
 ressources_per_trial = {"cpu":8, "gpu":0}
 ray.init(num_cpus=128)
 print(f"\n\n{ray.available_resources()} \n\n")
+raise AssertionError
 
 search_space = {
     "epochs":epochs,
