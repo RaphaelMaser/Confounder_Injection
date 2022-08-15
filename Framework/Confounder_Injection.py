@@ -731,9 +731,10 @@ class confounder:
         return self.train_x, self.train_y, self.test_x, self.test_y
 
 
-    def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, batch_size=1, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
         self.reset_seed()
         name = model.get_name()
+        self.model = copy.deepcopy(model)
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -758,11 +759,6 @@ class confounder:
             "optimizer": optimizer,
             "loss": model.loss,
             "adversarial_loss": model.adv_loss,
-            "batch_size": batch_size,
-            "alpha": model.alpha,
-            "alpha2": model.alpha2,
-            "lr": hyper_params["lr"],
-            "weight_decay": hyper_params["weight_decay"],
             "samples": self.samples,
             "target_domain_samples": self.target_domain_samples,
             "overlap": self.overlap,
@@ -777,6 +773,14 @@ class confounder:
             "seed": self.seed,
         }
 
+        # if we use wandb sweep the hyperparams are already set by wandb
+        if not wandb_sweep:
+            config["alpha"] = model.alpha
+            config["alpha2"] = model.alpha2
+            config["lr"] = hyper_params["lr"]
+            config["weight_decay"] = hyper_params["weight_decay"]
+            config["batch_size"] = hyper_params["batch_size"]
+
         if hasattr(model, "conditioning"):
             config["conditioning"]: model.conditioning
         if hasattr(model, "mode"):
@@ -786,25 +790,30 @@ class confounder:
 
         if wandb_init != None:
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True)
+            config = wandb.config
+
+        if wandb_sweep:
+            # setting hyperparameters
+            if "alpha" in config:
+                self.model.alpha = wandb.config["alpha"]
+            if "alpha2" in config:
+                self.model.alpha2 = wandb.config["alpha2"]
 
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
-        wandb_results = {}
 
         if hyper_params == None:
-            raise AssertionError("Choose some hyperparameter for the optimizer")
-        if not 'weight_decay' in hyper_params:
-            hyper_params['weight_decay'] = 0
+            if not wandb_sweep:
+                raise AssertionError("Choose some hyperparameter for the optimizer")
+        # else:
+        #     if not 'weight_decay' in config:
+        #         config['weight_decay'] = 0
 
-        self.model = copy.deepcopy(model)
-        #self.model.alpha = wandb.config["alpha"]
-        #self.model.alpha2 = wandb.config["alpha2"]
-
-        model_optimizer = optimizer(params=self.model.parameters(), lr=wandb.config['lr'], weight_decay=wandb.config["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=batch_size, confounder_features=self.train_confounder_features[set]).get_dataloader()
+        model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
+        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
         for cf_var in range(0,len(self.index)):
-            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=batch_size, confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
+            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
         for i in range(0, epochs):
             # load new results
@@ -828,8 +837,8 @@ class confounder:
 
                 # register accuracy in use_tune
                 if use_tune:
-                    assert(len(self.index)==1)
-                    tune.report(mean_accuracy=classification_accuracy)
+                   assert(len(self.index)==1)
+                   tune.report(mean_accuracy=classification_accuracy)
 
         if wandb_init != None:
             #wandb.log()

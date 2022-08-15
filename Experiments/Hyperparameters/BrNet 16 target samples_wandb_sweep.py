@@ -63,16 +63,16 @@ wandb_init = {
 }
 
 def train_wandb():
-    wandb.init()
-    config = wandb.config
-    if "alpha" in config:
-        train_params["model"].alpha = config["alpha"]
-    if "alpha2" in config:
-        train_params["model"].alpha2 = config["alpha2"]
+    # wandb.init()
+    # config = wandb.config
+    # if "alpha" in config:
+    #     train_params["model"].alpha = config["alpha"]
+    # if "alpha2" in config:
+    #     train_params["model"].alpha2 = config["alpha2"]
 
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    c.train(use_tune=False, epochs=train_params["epochs"], model = train_params["model"], optimizer=train_params["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=wandb_init)
+    c.train(wandb_sweep=True, epochs=train_params["epochs"], model = train_params["model"], optimizer=train_params["optimizer"], wandb_init=wandb_init)
 
 
 def run_wandb():
