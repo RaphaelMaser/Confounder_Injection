@@ -57,7 +57,7 @@ train_params = {
 
 wandb_init = {
     "entity": "confounder_in_ml",
-    "project": "Hyperparameters",
+    "project": "Hyperparameters WandB",
     "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
     "group": "BrNet",
 }
