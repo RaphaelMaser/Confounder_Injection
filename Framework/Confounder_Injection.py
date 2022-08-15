@@ -860,7 +860,7 @@ class confounder:
             config["model"].alpha = config["alpha"]
         if "alpha2" in config:
             config["model"].alpha2 = config["alpha2"]
-        self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+        self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
         return
 
 
