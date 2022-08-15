@@ -6,16 +6,9 @@ import importlib
 importlib.reload(Models)
 importlib.reload(CI)
 import torch
-import pandas as pd
-import numpy as np
-import seaborn as sbs
-import matplotlib.pyplot as plt
-import time
 from ray import tune
-from ray.tune.schedulers import ASHAScheduler
-from torch import nn
+import ray
 from ray.tune import CLIReporter
-import wandb
 import datetime
 import argparse
 import os
@@ -30,7 +23,8 @@ epochs = 10000
 samples = 128
 target_domain_samples = 16
 max_concurrent_trials = 1
-ressources_per_trial = {"cpu":128, "gpu":0}
+ressources_per_trial = {"cpu":1, "gpu":0}
+ray.init(num_cpus=128)
 
 search_space = {
     "epochs":epochs,
