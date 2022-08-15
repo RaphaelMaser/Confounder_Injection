@@ -27,7 +27,7 @@ from ipywidgets import interact, fixed
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import wandb
-import ast
+import datetime
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -645,6 +645,7 @@ class confounder:
         self.model_title_add = ""
         self.tune = tune
         self.name = name
+        self.wandb_sweep_init = None
 
 
         if start_timer:
@@ -759,6 +760,7 @@ class confounder:
             "adversarial_loss": model.adv_loss,
             "batch_size": batch_size,
             "alpha": model.alpha,
+            "alpha2": model.alpha2,
             "lr": hyper_params["lr"],
             "weight_decay": hyper_params["weight_decay"],
             "samples": self.samples,
@@ -783,7 +785,7 @@ class confounder:
             config["adversary2_mode"] = model.mode2
 
         if wandb_init != None:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"])
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True)
 
         delta_t = time.time()
         set = 0
@@ -796,7 +798,10 @@ class confounder:
             hyper_params['weight_decay'] = 0
 
         self.model = copy.deepcopy(model)
-        model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
+        #self.model.alpha = wandb.config["alpha"]
+        #self.model.alpha2 = wandb.config["alpha2"]
+
+        model_optimizer = optimizer(params=self.model.parameters(), lr=wandb.config['lr'], weight_decay=wandb.config["weight_decay"])
         self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=batch_size, confounder_features=self.train_confounder_features[set]).get_dataloader()
         for cf_var in range(0,len(self.index)):
             self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=batch_size, confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
@@ -847,7 +852,6 @@ class confounder:
         if "alpha2" in config:
             config["model"].alpha2 = config["alpha2"]
         self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
-
         return
 
 
@@ -1036,3 +1040,4 @@ def condition_and_filter_double(y, real, pred, real2, pred2, condition):
         filtered_pred2 = pred2
 
     return filtered_real, filtered_pred, filtered_real2, filtered_pred2
+

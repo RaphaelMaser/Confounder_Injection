@@ -102,6 +102,7 @@ class BrNet(nn.Module):
         reset_seed()
         super(BrNet, self).__init__()
         self.alpha = None
+        self.alpha2 = None
         self.adversarial = False
         self.name = "BrNet"
         self.loss = nn.CrossEntropyLoss()
@@ -137,6 +138,7 @@ class BrNet_adversarial(nn.Module):
         reset_seed()
         super(BrNet_adversarial, self).__init__()
         self.alpha = alpha
+        self.alpha2 = None
         self.adversarial = False
         self.name = "BrNet_adversarial"
         self.mode = None
