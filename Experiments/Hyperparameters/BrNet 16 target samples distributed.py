@@ -50,7 +50,7 @@ def run_tune():
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, resources_per_trial=ressources_per_trial, config=search_space)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 def BrNet_hyperparams():
@@ -155,7 +155,7 @@ parser.add_argument('-c', action="store", type=int, dest="cpus", help="Define th
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
-ray.init(num_cpus=args.cpus)
+#ray.init(num_cpus=args.cpus)
 ressources_per_trial = {"cpu":args.cpus, "gpu":0}
 
 # run experiments
