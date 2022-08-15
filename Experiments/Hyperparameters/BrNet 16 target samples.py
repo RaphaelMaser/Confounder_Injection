@@ -25,7 +25,7 @@ target_domain_samples = 16
 max_concurrent_trials = 1
 ressources_per_trial = {"cpu":8, "gpu":0}
 ray.init(num_cpus=128)
-print(f"\n\n{ray.get_available_ressources()} \n\n")
+print(f"\n\n{ray.available_ressources()} \n\n")
 
 search_space = {
     "epochs":epochs,
