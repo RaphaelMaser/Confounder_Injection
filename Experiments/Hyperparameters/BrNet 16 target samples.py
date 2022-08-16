@@ -24,7 +24,7 @@ samples = 128
 target_domain_samples = 16
 max_concurrent_trials = 4
 ressources_per_trial = {"cpu":4, "gpu":0}
-#ray.init(num_cpus=128)
+ray.init(num_cpus=16)
 
 
 search_space = {
