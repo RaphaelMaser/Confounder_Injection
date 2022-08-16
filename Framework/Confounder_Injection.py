@@ -742,15 +742,6 @@ class confounder:
             else:
                 device="cpu"
 
-        if wandb_init != None:
-            if "project" not in wandb_init:
-                wandb_init["project"] = "None"
-            if "group" not in wandb_init:
-                wandb_init["group"] = "None"
-            if "date" not in wandb_init:
-                wandb_init["date"] = "None"
-            if "batch_date" not in wandb_init:
-                wandb_init["batch_date"] = "None"
 
         config = {
             "model":name,
@@ -768,10 +759,20 @@ class confounder:
             "de_correlate_confounder_test": self.de_correlate_confounder_test,
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
-            "date": wandb_init["date"],
-            "batch_date": wandb_init["batch_date"],
             "seed": self.seed,
         }
+
+        if wandb_init != None:
+            if "project" not in wandb_init:
+                wandb_init["project"] = "None"
+            if "group" not in wandb_init:
+                wandb_init["group"] = "None"
+            if "date" not in wandb_init:
+                wandb_init["date"] = "None"
+            if "batch_date" not in wandb_init:
+                wandb_init["batch_date"] = "None"
+            config["date"]: wandb_init["date"]
+            config["batch_date"]: wandb_init["batch_date"]
 
         # if we use wandb sweep the hyperparams are already set by wandb
         if not wandb_sweep:
