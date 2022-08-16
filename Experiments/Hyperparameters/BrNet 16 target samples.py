@@ -20,10 +20,10 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 256
+samples = 128
 target_domain_samples = 16
-max_concurrent_trials = 128
-ressources_per_trial = {"cpu":1, "gpu":0}
+max_concurrent_trials = 4
+ressources_per_trial = {"cpu":4, "gpu":0}
 #ray.init(num_cpus=128)
 
 
