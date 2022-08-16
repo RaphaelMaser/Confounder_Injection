@@ -771,8 +771,8 @@ class confounder:
                 wandb_init["date"] = "None"
             if "batch_date" not in wandb_init:
                 wandb_init["batch_date"] = "None"
-            config["date"]: wandb_init["date"]
-            config["batch_date"]: wandb_init["batch_date"]
+            config["date"] = wandb_init["date"]
+            config["batch_date"] = wandb_init["batch_date"]
 
         # if we use wandb sweep the hyperparams are already set by wandb
         if not wandb_sweep:
