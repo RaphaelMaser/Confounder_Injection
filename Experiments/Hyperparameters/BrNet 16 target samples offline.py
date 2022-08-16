@@ -39,7 +39,7 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
     },
-    "wandb_init" : {
+    "ray_init" : {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
@@ -51,7 +51,7 @@ def run_tune():
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial, name=search_space["model"].get_name())#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
 
 def BrNet_hyperparams():
@@ -148,7 +148,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune()
 
 os.environ['WANDB_MODE'] = 'run'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
