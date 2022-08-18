@@ -21,8 +21,8 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-max_concurrent_trials = 8
-cpus_per_trial = 4
+max_concurrent_trials = 16
+cpus_per_trial = 2
 #ray.init(num_cpus=128)
 
 
@@ -45,8 +45,6 @@ search_space = {
         "group": "BrNet",
     },
 }
-
-@ray.remote(num_cpus=16)
 def train_tune(config):
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
@@ -62,7 +60,7 @@ def train_tune(config):
 
 def run_tune():
     #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    tune.run(train_tune.remote,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials,
+    tune.run(train_tune,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0}, sync_config=tune.SyncConfig(
         syncer=None  # Disable syncing
     ))

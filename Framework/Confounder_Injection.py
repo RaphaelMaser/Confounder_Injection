@@ -28,6 +28,7 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import wandb
 import datetime
+import ray
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -729,7 +730,6 @@ class confounder:
                 print("--- generate_data ---")
                 #print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
-
 
     def train(self, use_tune=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
         self.reset_seed()
