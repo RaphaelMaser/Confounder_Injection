@@ -157,7 +157,7 @@ class plot_from_csv:
         title = ""
         for cf in config_filter:
             title = f"{title} \n {cf}={config_filter[cf]}"
-        fig, ax = plt.subplots(1,2,figsize=(8*2,6))
+        fig, ax = plt.subplots(2,1,figsize=(20,14))
         fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
         #model_name = df["model"]
 
@@ -831,12 +831,15 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if wandb_init != None and ((i+1) % epochs) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                elif wandb_init != None and (i % 10) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
+                # if wandb_init != None and ((i+1) % epochs) == 0:
+                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+                # elif wandb_init != None and (i % 10) == 0:
+                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
 
-                # register accuracy in use_tune
+                if wandb_init != None and ((i+1) % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+
+            # register accuracy in use_tune
                 if use_tune:
                    assert(len(self.index)==1)
                    tune.report(mean_accuracy=classification_accuracy)

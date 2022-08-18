@@ -21,10 +21,11 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-target_domain_samples = 16
-max_concurrent_trials = 4
+target_domain_samples = 0  #TODO change again
+#target_domain_samples = 16
+max_concurrent_trials = 8
 ressources_per_trial = {"cpu":4, "gpu":0}
-ray.init(num_cpus=16)
+ray.init(num_cpus=32)
 
 
 search_space = {

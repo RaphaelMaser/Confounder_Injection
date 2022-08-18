@@ -168,6 +168,11 @@ def run_experiments(model, hyperparams):
 
     # target_domain_unconfounded_test_unconfounded_16_samples
     c = CI.confounder(clean_results=True, start_timer=True)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[0], params=params)
+    c.train(wandb_init=wandb_init, model=model, epochs=epochs, optimizer=torch.optim.Adam, hyper_params=hyperparams)
+
+    # target_domain_unconfounded_test_unconfounded_16_samples
+    c = CI.confounder(clean_results=True, start_timer=True)
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=16, target_domain_confounding=0, train_confounding=1, test_confounding=[0], params=params)
     c.train(wandb_init=wandb_init, model=model, epochs=epochs, optimizer=torch.optim.Adam, hyper_params=hyperparams)
 
