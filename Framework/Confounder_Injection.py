@@ -776,18 +776,18 @@ class confounder:
 
         # if we use wandb sweep the hyperparams are already set by wandb
         if not wandb_sweep:
-            config["alpha"] = model.alpha
-            config["alpha2"] = model.alpha2
+            config["alpha"] = self.model.alpha
+            config["alpha2"] = self.model.alpha2
             config["lr"] = hyper_params["lr"]
             config["weight_decay"] = hyper_params["weight_decay"]
             config["batch_size"] = hyper_params["batch_size"]
 
         if hasattr(model, "conditioning"):
-            config["conditioning"]: model.conditioning
+            config["conditioning"] = self.model.conditioning
         if hasattr(model, "mode"):
-            config["adversary_mode"] = model.mode
+            config["adversary_mode"] = self.model.mode
         if hasattr(model, "mode2"):
-            config["adversary2_mode"] = model.mode2
+            config["adversary2_mode"] = self.model.mode2
 
         if wandb_init != None:
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True)
