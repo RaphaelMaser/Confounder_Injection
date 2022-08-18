@@ -831,13 +831,13 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                # if wandb_init != None and ((i+1) % epochs) == 0:
-                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                # elif wandb_init != None and (i % 10) == 0:
-                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
-
-                if wandb_init != None and ((i+1) % 10) == 0:
+                if wandb_init != None and ((i+1) % epochs) == 0:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+                elif wandb_init != None and (i % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
+
+                # if wandb_init != None and ((i+1) % 10) == 0:
+                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
             # register accuracy in use_tune
                 if use_tune:
