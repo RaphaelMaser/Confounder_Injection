@@ -23,7 +23,7 @@ epochs = 10000
 samples = 128
 max_concurrent_trials = 8
 cpus_per_trial = 4
-ray.init(num_cpus=128)
+#ray.init(num_cpus=128)
 
 
 search_space = {
@@ -46,6 +46,7 @@ search_space = {
     },
 }
 
+@ray.remote(num_cpus=16)
 def train_tune(config):
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
@@ -57,11 +58,11 @@ def train_tune(config):
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     c.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
-    return
+
 
 def run_tune():
     #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    tune.run(train_tune,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials,
+    tune.run(train_tune.remote,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0}, sync_config=tune.SyncConfig(
         syncer=None  # Disable syncing
     ))
