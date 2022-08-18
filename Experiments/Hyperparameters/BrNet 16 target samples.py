@@ -23,7 +23,7 @@ epochs = 10000
 samples = 128
 max_concurrent_trials = 16
 cpus_per_trial = 2
-#ray.init(num_cpus=128)
+ray.init(num_cpus=max_concurrent_trials*cpus_per_trial)
 
 
 search_space = {
