@@ -21,8 +21,6 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-target_domain_samples = 0  #TODO change again
-#target_domain_samples = 16
 max_concurrent_trials = 8
 ressources_per_trial = {"cpu":4, "gpu":0}
 ray.init(num_cpus=32)
@@ -50,7 +48,7 @@ search_space = {
 
 def run_tune():
     c = CI.confounder()
-    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
     analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
 
@@ -155,8 +153,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
 parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
+parser.add_argument('-test_confounding', action="store", dest="test_confounding", help="Define strength of confounder in test data")
+parser.add_argument('-target_domain_samples', action="store", dest="target_domain_samples", help="Define number of target domain samples")
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
+test_confounding = args.test_confounding
+target_domain_samples = args.target_domain_samples
 
 number = args.experiment_number + 10*args.experiment_number_add
 if number == 0:
