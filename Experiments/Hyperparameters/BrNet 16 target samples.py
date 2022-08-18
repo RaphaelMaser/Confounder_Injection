@@ -23,7 +23,7 @@ epochs = 10000
 samples = 128
 max_concurrent_trials = 8
 ressources_per_trial = {"cpu":4, "gpu":0}
-ray.init(num_cpus=32)
+#ray.init(num_cpus=32)
 
 
 search_space = {
@@ -46,11 +46,24 @@ search_space = {
     },
 }
 
-def run_tune():
+def train_tune(config):
+    if "alpha" in config:
+        config["model"].alpha = config["alpha"]
+    if "alpha2" in config:
+        config["model"].alpha2 = config["alpha2"]
+    if not "wandb_init" in config:
+        config["wandb_init"] = None
+
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    c.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+    return
+
+def run_tune():
+    #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    tune.run(train_tune,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial, sync_config=tune.SyncConfig(
+        syncer=None  # Disable syncing
+    ))
 
 
 def BrNet_hyperparams():

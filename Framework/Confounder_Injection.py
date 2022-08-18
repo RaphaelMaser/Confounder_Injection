@@ -858,16 +858,6 @@ class confounder:
 
         return self.results
 
-    #@wandb_mixin
-    def train_tune(self, config):
-        if "alpha" in config:
-            config["model"].alpha = config["alpha"]
-        if "alpha2" in config:
-            config["model"].alpha2 = config["alpha2"]
-        if not "wandb_init" in config:
-            config["wandb_init"] = None
-        self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
-        return
 
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
