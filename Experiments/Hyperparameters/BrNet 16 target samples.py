@@ -20,8 +20,8 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 128
-max_concurrent_trials = 64
+samples = 256
+max_concurrent_trials = 16
 cpus_per_trial = 2
 ray.init(num_cpus=max_concurrent_trials*cpus_per_trial)
 
@@ -55,7 +55,7 @@ def train_tune(config):
 
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    c.train(use_tune=True, use_wandb=False, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
 def run_tune():
