@@ -20,11 +20,10 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 256
-target_domain_samples = 16
-max_concurrent_trials = 128
-ressources_per_trial = {"cpu":1, "gpu":0}
-#ray.init(num_cpus=128)
+samples = 128
+max_concurrent_trials = 16
+cpus_per_trial = 2
+ray.init(num_cpus=max_concurrent_trials*cpus_per_trial)
 
 
 search_space = {
@@ -39,123 +38,138 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
     },
-    "ray_init" : {
+    "wandb_init" : {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
         "group": "BrNet",
     },
 }
+def train_tune(config):
+    if "alpha" in config:
+        config["model"].alpha = config["alpha"]
+    if "alpha2" in config:
+        config["model"].alpha2 = config["alpha2"]
+    if not "wandb_init" in config:
+        config["wandb_init"] = None
+
+    c = CI.confounder()
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+    c.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=None)
+
 
 def run_tune():
-    c = CI.confounder()
-    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, progress_reporter=reporter, config=search_space, max_concurrent_trials=max_concurrent_trials, resources_per_trial=ressources_per_trial, name=search_space["model"].get_name())#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    tune.run(train_tune,num_samples=samples, config=search_space, max_concurrent_trials=max_concurrent_trials,
+             resources_per_trial={"cpu":cpus_per_trial, "gpu":0}, local_dir=f"~/ray_results/{args.date}")
 
 
 def BrNet_hyperparams():
     search_space["model"] = Models.BrNet()
-    search_space["ray_init"]["group"] = "BrNet"
+    search_space["wandb_init"]["group"] = "BrNet"
     run_tune()
 
 def BrNet_CF_free_labels_entropy_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_entropy(alpha=None)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_labels_entropy"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_entropy"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_labels_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_entropy(alpha=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_labels_entropy_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_entropy_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_labels_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_corr(alpha=None)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_labels_corr"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_labels_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_corr(alpha=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_labels_corr_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_features_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_features_corr(alpha=None)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_features_corr"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_features_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_features_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_features_corr(alpha=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_features_corr_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_features_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_DANN_entropy_hyperparams():
     search_space["model"] = Models.BrNet_DANN_entropy(alpha=None)
-    search_space["ray_init"]["group"] = "BrNet_DANN_entropy"
+    search_space["wandb_init"]["group"] = "BrNet_DANN_entropy"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_DANN_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_DANN_entropy(alpha=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_DANN_entropy_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_DANN_entropy_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_DANN_corr_hyperparams():
     search_space["model"] = Models.BrNet_DANN_corr(alpha=None)
-    search_space["ray_init"]["group"] = "BrNet_DANN_corr"
+    search_space["wandb_init"]["group"] = "BrNet_DANN_corr"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_DANN_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_DANN_corr(alpha=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_DANN_corr_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_DANN_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_DANN_labels_entropy_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy"
     search_space["alpha"] = tune.uniform(0,1)
     search_space["alpha2"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     search_space["alpha2"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr"
     search_space["alpha"] = tune.uniform(0,1)
     search_space["alpha2"] = tune.uniform(0,1)
     run_tune()
 
 def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None, conditioning=0)
-    search_space["ray_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned"
+    search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned"
     search_space["alpha"] = tune.uniform(0,1)
     search_space["alpha2"] = tune.uniform(0,1)
     run_tune()
 
-os.environ['WANDB_MODE'] = 'run'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
+#os.environ['WANDB_MODE'] = 'offline'
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
 parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
+parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
+parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
 args = parser.parse_args()
-search_space["ray_init"]["batch_date"] = args.date
+search_space["wandb_init"]["batch_date"] = args.date
+test_confounding = args.test_confounding
+target_domain_samples = args.target_domain_samples
 
 number = args.experiment_number + 10*args.experiment_number_add
 if number == 0:

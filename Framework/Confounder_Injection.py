@@ -731,7 +731,7 @@ class confounder:
                 #print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
-    def train(self, use_tune=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, use_wandb=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
         self.reset_seed()
         name = model.get_name()
         self.model = copy.deepcopy(model)
@@ -762,7 +762,7 @@ class confounder:
             "seed": self.seed,
         }
 
-        if wandb_init != None:
+        if use_wandb:
             if "project" not in wandb_init:
                 wandb_init["project"] = "None"
             if "group" not in wandb_init:
@@ -789,7 +789,7 @@ class confounder:
         if hasattr(model, "mode2"):
             config["adversary2_mode"] = self.model.mode2
 
-        if wandb_init != None:
+        if use_wandb:
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True)
             config = wandb.config
 
@@ -831,20 +831,20 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if wandb_init != None and ((i+1) % epochs) == 0:
+                if use_wandb and ((i+1) % epochs) == 0:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                elif wandb_init != None and (i % 10) == 0:
+                elif use_wandb and (i % 10) == 0:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
 
                 # if wandb_init != None and ((i+1) % 10) == 0:
                 #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
             # register accuracy in use_tune
-                if use_tune:
+                if use_tune:# and ((i+1) % 10) == 0:
                    assert(len(self.index)==1)
                    tune.report(mean_accuracy=classification_accuracy)
 
-        if wandb_init != None:
+        if use_wandb:
             #wandb.log()
             wandb.config.update({"trained_model": self.model},allow_val_change=True)
             wandb.finish()
