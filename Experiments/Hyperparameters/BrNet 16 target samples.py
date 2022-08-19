@@ -21,7 +21,7 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-max_concurrent_trials = 16
+max_concurrent_trials = 64
 cpus_per_trial = 2
 ray.init(num_cpus=max_concurrent_trials*cpus_per_trial)
 
