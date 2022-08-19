@@ -55,7 +55,7 @@ def train_tune(config):
 
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    c.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+    c.train(use_tune=True, use_wandb=False, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
 def run_tune():
@@ -159,7 +159,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune()
 
 os.environ['WANDB_MODE'] = 'run'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
