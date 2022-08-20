@@ -803,7 +803,7 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True)
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
             config = wandb.config
 
         if wandb_sweep:
