@@ -205,6 +205,6 @@ elif number == 13:
 elif number == 14:
     BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-for i in range(0,20):
-    print(f"Waited for {i} minutes")
-    time.sleep(60)
+# for i in range(0,5):
+#     print(f"Waited for {i} minutes")
+#     time.sleep(60)
