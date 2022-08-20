@@ -486,6 +486,17 @@ class generator:
         return self.x, self.y, self.domain_labels, self.confounder_labels, self.confounder_features
 
 
+class confounder_injection:
+
+    def __init__(self, path):
+        pass
+
+    def inject_local_xy(self):
+        pass
+
+    def read_dataset(self, path):
+        pass
+
 class train:
     def __init__(self, mode, model, train_dataloader, device, optimizer):
         self.model = model
@@ -521,7 +532,6 @@ class train:
             confounder_accuracy /= confounder_size
 
         return classification_accuracy, confounder_accuracy
-
 
     def train_normal(self):
         self.model = self.model.to(self.device)
@@ -731,6 +741,9 @@ class confounder:
                 #print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
+    def inject_confounder(self, type=None):
+        pass
+
     def train(self, use_tune=False, use_wandb=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
         self.reset_seed()
         name = model.get_name()
@@ -857,8 +870,6 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
-
-
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
         p = plot()

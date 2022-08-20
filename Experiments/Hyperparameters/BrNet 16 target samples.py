@@ -12,6 +12,7 @@ from ray.tune import CLIReporter
 import datetime
 import argparse
 import os
+import time
 
 params = [
     [[1, 4], [3, 6]], # real feature
@@ -20,9 +21,9 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 256
-max_concurrent_trials = 128
-cpus_per_trial = 1
+samples = 128
+max_concurrent_trials = 64
+cpus_per_trial = 2
 ray.init(num_cpus=max_concurrent_trials*cpus_per_trial)
 
 
@@ -204,6 +205,6 @@ elif number == 13:
 elif number == 14:
     BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-# for i in range(0,20):
-#     print(f"Waited for {i} minutes")
-#     time.sleep(60)
+for i in range(0,20):
+    print(f"Waited for {i} minutes")
+    time.sleep(60)
