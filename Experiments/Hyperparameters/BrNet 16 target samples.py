@@ -55,7 +55,7 @@ def train_tune(config):
         config["wandb_init"] = None
 
     c = CI.confounder()
-    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
+    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
     c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
@@ -168,10 +168,12 @@ parser.add_argument('-v', action="store", type=int, dest="experiment_number_add"
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
+parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
 test_confounding = args.test_confounding
 target_domain_samples = args.target_domain_samples
+target_domain_confounding = args.target_domain_confounding
 
 number = args.experiment_number + 10*args.experiment_number_add
 if number == 0:
