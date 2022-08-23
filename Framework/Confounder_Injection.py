@@ -29,6 +29,7 @@ from ray.tune.schedulers import ASHAScheduler
 import wandb
 import datetime
 import ray
+import os
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -829,7 +830,7 @@ class confounder:
         for cf_var in range(0,len(self.index)):
             self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
-        for i in range(0, epochs):
+        for epoch in range(1, epochs+1):
             # load new results
 
             t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer)
@@ -840,26 +841,39 @@ class confounder:
 
                 results["confounder_strength"].append(self.index[cf_var])
                 results["model_name"].append(self.model.get_name()+self.model_title_add)
-                results["epoch"].append(i+1)
+                results["epoch"].append(epoch)
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if use_wandb and ((i+1) % epochs) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                elif use_wandb and (i % 10) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
+                if use_wandb and (epoch % epochs) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=True, step=epoch)
+                elif use_wandb and (epoch % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=False, step=epoch)
 
                 # if wandb_init != None and ((i+1) % 10) == 0:
                 #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
             # register accuracy in use_tune
-                if use_tune:# and ((i+1) % 10) == 0:
-                   assert(len(self.index)==1)
-                   tune.report(mean_accuracy=classification_accuracy)
+                if use_tune and (epoch % 10) == 0:
+                    # PBT needs checkpointing
+                    with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
+                        # create checkpoint file
+                        path = os.path.join(checkpoint_dir,"checkpoint")
+                        # save state to checkpoint file
+                        torch.save(
+                            {
+                                "step": epoch,
+                                "model_state_dict":model.state_dict(),
+                                "mean_accuracy":classification_accuracy
+                            },
+                            path,
+                        )
+                    # report to tune
+                    tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
             #wandb.log()
-            wandb.config.update({"trained_model": self.model},allow_val_change=True)
+            wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
