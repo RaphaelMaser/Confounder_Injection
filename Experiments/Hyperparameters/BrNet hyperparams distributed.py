@@ -52,7 +52,7 @@ def train_tune(config):
 
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
-    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], resources_per_trial={"cpu":cpus_per_trial})
+    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
 def run_tune():
@@ -71,7 +71,7 @@ def run_tune():
         )
     model_name = search_space["model"].get_name()
     tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4,
-             #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
+             resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              local_dir=f"~/ray_results/target_domain_samples={target_domain_samples},test_confounding={test_confounding},model={model_name}/{args.date}")
 
 
