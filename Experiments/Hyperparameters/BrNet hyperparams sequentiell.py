@@ -23,7 +23,7 @@ e = datetime.datetime.now()
 epochs = 10000
 samples = 128
 cpus_per_trial = 128
-ray.init(num_cpu=128)
+ray.init(num_cpus=128)
 
 search_space = {
     "epochs":epochs,
