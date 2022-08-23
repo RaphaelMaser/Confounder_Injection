@@ -22,7 +22,7 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-cpus_per_trial = 2
+cpus_per_trial = 4
 
 search_space = {
     "epochs":epochs,
