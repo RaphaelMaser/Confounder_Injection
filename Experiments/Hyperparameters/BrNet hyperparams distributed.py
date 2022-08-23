@@ -21,8 +21,9 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 256
+samples = 128
 cpus_per_trial = 2
+ray.init()
 
 search_space = {
     "epochs":epochs,
@@ -150,7 +151,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune()
 
 os.environ['WANDB_MODE'] = 'run'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
+#os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
