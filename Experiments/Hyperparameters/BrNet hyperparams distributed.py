@@ -156,9 +156,8 @@ os.environ['WANDB_MODE'] = 'run'
 os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
-parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
+parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
 parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
@@ -171,6 +170,7 @@ target_domain_samples = args.target_domain_samples
 target_domain_confounding = args.target_domain_confounding
 de_correlate_confounder_target = args.de_correlate_confounder_target
 de_correlate_confounder_test = args.de_correlate_confounder_test
+cpus_per_trial = args.c
 
 # run experiments
 BrNet_hyperparams()
