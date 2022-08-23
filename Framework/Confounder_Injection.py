@@ -27,7 +27,8 @@ from ipywidgets import interact, fixed
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 import wandb
-import ast
+import datetime
+import ray
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -67,9 +68,9 @@ class plot:
             sbs.lineplot(data=confounder_accuracy, ax=ax[1][i]).set(title=f"Confounder Accuracy\n(confounder strength: {confounder_strength})", ylim=(0.45,1.05))
         fig.tight_layout()
 
-    def accuracy_vs_strength(self, results):
+    def accuracy_vs_strength(self, results, n_classes=2, ideal=False):
         #print(results)
-        fig, ax = plt.subplots(1,1,figsize=(8,4))
+        fig, ax = plt.subplots(1,1,figsize=(8,6))
         fig.suptitle("Accuracy vs Strength", fontsize=self.fontsize)
         model_name = results["model_name"][0]
 
@@ -78,8 +79,13 @@ class plot:
 
         class_max_acc = classification_accuracy.max(axis='rows')
         class_mean_acc = classification_accuracy.mean(axis='rows')
+        if ideal:
+            #ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
+            ideal_df = pd.DataFrame({"theoretical upper bound":[1/n_classes,1]}, index=[0,1])
+            sbs.lineplot(data=ideal_df, ax=ax, dashes=[(2,2)], palette=["green"])
         class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
-        sbs.lineplot(data=class_max_and_mean_acc, markers=True).set(title=f"{model_name}\nClassification Accuracy", ylim=(0.45,1.05))
+
+        sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))#, xlabel="confounder_labels strength in test set" )
         plt.tight_layout()
         #conf_max_acc = confounder_accuracy.max(axis='rows')
         #conf_mean_acc = confounder_accuracy.mean(axis='rows')
@@ -152,7 +158,7 @@ class plot_from_csv:
         title = ""
         for cf in config_filter:
             title = f"{title} \n {cf}={config_filter[cf]}"
-        fig, ax = plt.subplots(1,2,figsize=(8*2,6))
+        fig, ax = plt.subplots(2,1,figsize=(20,14))
         fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
         #model_name = df["model"]
 
@@ -164,10 +170,11 @@ class plot_from_csv:
         df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
         #df.to_csv("df file.csv")
         classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
-        confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
-
         sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
-        sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+
+        if "confounder_accuracy" in df:
+            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
 
         plt.tight_layout()
         return
@@ -202,7 +209,7 @@ class plot_from_csv:
 
             config_dict = {}
             for c in project_df["config"][i]:
-                config_dict[c] = {k:project_df["config"][i][c] for k in range(0,len(project_df["history"].iloc[i]["confounder_accuracy"]))}
+                config_dict[c] = {k:project_df["config"][i][c] for k in range(0,len(project_df["history"].iloc[i]["classification_accuracy"]))}
 
 
             history_frame = pd.DataFrame.from_dict(history_dict)
@@ -227,36 +234,42 @@ class plot_from_csv:
 
 
 class CfDataset(torch.utils.data.Dataset):
-    def __init__(self, x, y, domain=None, confounder=None):
+    def __init__(self, x, y, domain_labels=None, confounder_labels=None, confounder_features=None):
         self.x = x
         self.y = y
+        assert(domain_labels != None)
+        assert(confounder_labels != None)
+        assert(confounder_features != None)
 
-        if domain == None:
-            domain = np.zeros((len(y)))
-        if confounder == None:
-            confounder = np.zeros((len(y)))
+        if domain_labels == None:
+            domain_labels = np.fill((len(y)),-1)
+        if confounder_labels == None:
+            confounder_labels = np.fill((len(y)),-1)
 
-        self.domain = domain
-        self.confounder = confounder
+        self.domain_labels = domain_labels
+        self.confounder_labels = confounder_labels
+        self.confounder_features = confounder_features
 
     def __len__(self):
         return len(self.y)
 
     def __getitem__(self, idx):
-        return self.x[idx], {'y': self.y[idx], 'domain_labels': self.domain[idx], 'confounder_labels':self.confounder[idx]}
+        return self.x[idx], {'y': self.y[idx], 'domain_labels': self.domain_labels[idx], 'confounder_labels':self.confounder_labels[idx], 'confounder_features': self.confounder_features[idx]}
 
     def confounder_size(self):
-        confounder_samples = self.confounder[self.confounder != -1]
+        confounder_samples = self.confounder_labels[self.confounder_labels != -1]
         return len(confounder_samples)
 
+
 class create_dataloader:
-    def __init__(self, x=None, y=None, domain=None, confounder=None, batch_size=1):
+    def __init__(self, x=None, y=None, domain_labels=None, confounder_labels=None, confounder_features = None, batch_size=1):
         #assert(x != None and y != None)
         self.x = x
         self.y = y
-        self.domain_labels = domain
-        self.confounder_labels = confounder
+        self.domain_labels = domain_labels
+        self.confounder_labels = confounder_labels
         self.batch_size = batch_size
+        self.confounder_features = confounder_features
 
 
     # def split_dataset(self, dataset):
@@ -274,8 +287,9 @@ class create_dataloader:
         tensor_y = torch.Tensor(self.y).long()
         tensor_domain = torch.Tensor(self.domain_labels).long()
         tensor_confounder_labels= torch.Tensor(self.confounder_labels).long()
+        tensor_confounder_features= torch.Tensor(self.confounder_features).long()
 
-        dataset = CfDataset(x=tensor_x, y=tensor_y, domain=tensor_domain, confounder=tensor_confounder_labels)
+        dataset = CfDataset(x=tensor_x, y=tensor_y, domain_labels=tensor_domain, confounder_labels=tensor_confounder_labels, confounder_features=tensor_confounder_features)
         #train_dataset, test_dataset = self.split_dataset(dataset)
         # TODO delete unnecessary stuff
         # create DataLoader
@@ -286,11 +300,12 @@ class create_dataloader:
 
 
 class generator:
-    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0, conditioning=-1):
+    def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
         np.random.seed(seed)
         self.x = None
         self.y = None
         self.confounder_labels = None
+        self.confounder_features = None
         self.domain_labels = None
 
         self.debug = False
@@ -299,7 +314,6 @@ class generator:
         self.overlap = overlap
         self.domain = domain
         self.de_correlate_confounder = de_correlate_confounder
-        self.conditioning = conditioning
 
         if mode == "br-net" or mode == "br_net":
             self.br_net(params)
@@ -312,16 +326,8 @@ class generator:
 
     def br_net(self, params=None):
         N = self.samples # number of subjects in a group
-
-        self.domain_labels = np.full((N*2), self.domain)
-        self.confounder_labels = np.full((N*2), -1)
-
-        if self.samples <= 0:
+        if N <= 0:
             return None, None
-
-        overlap = self.overlap
-        assert(overlap % 2 == 0 and overlap <= 32)
-        overhang = int(overlap / 2)
 
         if params is None:
             params = [
@@ -329,50 +335,56 @@ class generator:
                 [[5, 4], [10, 6]] # confounder_labels
             ]
 
+        n_groups = len(params[0])
+        self.domain_labels = np.full((N*n_groups), self.domain)
+        self.confounder_labels = np.full((N*n_groups), n_groups)
+        self.class_labels = np.full((N*n_groups), -1)
+
+
+        overlap = self.overlap
+        assert(overlap % 2 == 0 and overlap <= 32)
+        overhang = int(overlap / 2)
+
         confounded_samples = int(N*self.confounded_samples)
 
-        if self.de_correlate_confounder == True:
-            # 2 confounding effects between 2 groups, confounder_labels chosen by chance
-            self.confounder_labels[:confounded_samples] = np.random.randint(0,2,size=confounded_samples)
-            self.confounder_labels[N:N + confounded_samples] = np.random.randint(0,2, size=confounded_samples)
-            #print("de-correlated: ",self.confounder_labels)
+        for g in range(n_groups):
+            # define confounder_labels labels
+            if self.de_correlate_confounder == True:
+                # confounding effects between groups, confounder_labels chosen by chance
+                self.confounder_labels[N*g:N*g + confounded_samples] = np.random.randint(0,n_groups, size=confounded_samples)
+            else:
+                # confounding effects between groups
+                self.confounder_labels[N*g:N*g + confounded_samples] = np.full((confounded_samples),g)
 
-        else:
-            # 2 confounding effects between 2 groups
-            self.confounder_labels[:confounded_samples] = 0
-            self.confounder_labels[N:N + confounded_samples] = 1
-            #print("correlated: ", self.confounder_labels)
+            # define class labels
+            self.class_labels[N*g:N*(g+1)] = np.full((N),g)
 
-        if self.conditioning != -1:
-            self.confounder_labels[self.conditioning*N:(self.conditioning+1)*N] = np.full((N),-1)
+        # cf and mc are the confounding- and class-features
+        # these are derived from the confounding -and class-labels
+        cf = np.zeros((N*n_groups))
+        mf = np.zeros((N*n_groups))
 
-
-        cf = np.zeros((N*2))
+        # derive cf from confounder_labels-label
         for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
-            if index != -1:
+            if index != n_groups:
                 #print("Index is ",index)
                 cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
             else:
                 cf[i] = np.nan
 
-
-        # 2 major effects between 2 groups
-        mf = np.zeros((N*2))
-        mf[:N] = np.random.uniform(params[0][0][0], params[0][0][1],size=N)
-        mf[N:] = np.random.uniform(params[0][1][0], params[0][1][1],size=N)
+        # derive mf from class-label
+        for g in range(n_groups):
+            mf[N*g:N*(g+1)] = np.random.uniform(params[0][g][0], params[0][g][1], N)
 
         # simulate images
-        x = np.zeros((N*2,1,32,32))
-        y = np.zeros((N*2))
-        y[N:] = 1
-
-        for i in range(N*2):
+        x = np.zeros((N*n_groups,1,32,32))
+        for i in range(0,N*n_groups):
             # add real feature
             x[i,0,:16 + overhang, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
-            # check if confounder_labels should be added
+            # check if confounder_labels feature should be added
             if not np.isnan(cf[i]):
                 x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
                 x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
@@ -380,13 +392,21 @@ class generator:
             # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
+        self.confounder_features = cf
+
+        # if self.conditioning != -1:
+        #     self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+        #     self.confounder_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
+        #     self.confounder_features[N*self.conditioning:N*(self.conditioning+1)] = -1
+
         if self.debug:
             print("--- generator ---")
             print("Confounding factor:",self.confounded_samples)
             print("Number of samples per group")
             print("Confounded samples per group (estimate):", confounded_samples)
+
         self.x = x
-        self.y = y
+        self.y = self.class_labels
 
 
     def br_net_simple(self, params=None):
@@ -463,16 +483,26 @@ class generator:
         return kernel
 
     def get_data(self):
-        return self.x, self.y, self.domain_labels, self.confounder_labels
+        return self.x, self.y, self.domain_labels, self.confounder_labels, self.confounder_features
 
+
+class confounder_injection:
+
+    def __init__(self, path):
+        pass
+
+    def inject_local_xy(self):
+        pass
+
+    def read_dataset(self, path):
+        pass
 
 class train:
-    def __init__(self, mode, model, train_dataloader, device, optimizer, loss_fn):
+    def __init__(self, mode, model, train_dataloader, device, optimizer):
         self.model = model
         self.mode = mode
         self.train_dataloader = train_dataloader
         self.device = device
-        self.loss_fn = loss_fn
         self.accuracy = []
         self.loss = []
         self.optimizer = optimizer
@@ -490,7 +520,7 @@ class train:
                 y = label["y"].to(self.device)
                 conf = label["confounder_labels"].to(self.device)
 
-                class_pred, domain_pred = self.model(X)
+                class_pred, _, _ = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
                 classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
                 confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
@@ -502,32 +532,6 @@ class train:
             confounder_accuracy /= confounder_size
 
         return classification_accuracy, confounder_accuracy
-
-    def test_DANN(self):
-        size = len(self.test_dataloader.dataset)
-        confounder_size = self.test_dataloader.dataset.confounder_size()
-        num_batches = len(self.test_dataloader)
-        self.model.eval()
-        classification_accuracy, confounder_accuracy = 0, 0
-        with torch.no_grad():
-            for X,label in self.test_dataloader:
-                X = X.to(self.device)
-                y = label["y"].to(self.device)
-                conf = label["confounder_labels"].to(self.device)
-
-                class_pred, domain_pred = self.model(X)
-                #test_loss += self.loss_fn(class_pred, label["y"]).item()
-                classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
-                confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
-        #test_loss /= num_batches
-        classification_accuracy /= size
-        if confounder_size <= 0:
-            confounder_accuracy = None
-        else:
-            confounder_accuracy /= confounder_size
-
-        return classification_accuracy, confounder_accuracy
-
 
     def train_normal(self):
         self.model = self.model.to(self.device)
@@ -538,8 +542,8 @@ class train:
             y = label["y"].to(self.device)
 
             # Compute prediction error
-            class_pred, domain_pred = self.model(X)
-            loss = self.loss_fn(class_pred, y)
+            class_pred, _, _ = self.model(X)
+            loss = self.model.loss(class_pred, y)
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -547,33 +551,28 @@ class train:
             self.optimizer.step()
         return
 
-    def train_adversarial(self, mode=None, ignore=[]):
-        if mode == "DANN":
-            adversarial_loss = "domain_labels"
-        elif mode == "CF_free":
-            adversarial_loss = "confounder_labels"
-        else:
-            adversarial_loss = None
-
+    def train_adversarial(self):
+        adversarial_mode = self.model.mode
         self.model = self.model.to(self.device)
 
         # loss functions
-        class_crossentropy = nn.CrossEntropyLoss()
-        domain_crossentropy = nn.CrossEntropyLoss(ignore_index=-1)
+        class_loss_function = self.model.loss
+        adversarial_loss_function = self.model.adv_loss
 
         self.model.train()
         for batch, (X,label) in enumerate(self.train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
-            adv = label[adversarial_loss].to(self.device)
+            adversary_label = label[adversarial_mode].to(self.device)
 
             # prediction
-            class_pred, conf_pred = self.model(X)
+            class_pred, adversary_pred, _ = self.model(X)
+            adversary_label, adversary_pred = condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
 
             # compute error
-            class_loss = class_crossentropy(class_pred, y)
-            domain_loss = domain_crossentropy(conf_pred, adv)
-            loss = class_loss + domain_loss
+            class_loss = class_loss_function(class_pred, y)
+            adversary_loss = adversarial_loss_function(adversary_pred, adversary_label)
+            loss = class_loss + adversary_loss
 
             # Backpropagation
             self.optimizer.zero_grad()
@@ -582,27 +581,58 @@ class train:
             self.optimizer.step()
         return
 
-    def run(self):
-        if isinstance(self.model, Models.SimpleConv_DANN) or isinstance(self.model, Models.Br_Net_DANN):
-            self.train_adversarial(mode="DANN")
+    def train_adversarial_double(self):
+        adversary_mode = self.model.mode
+        adversary2_mode = self.model.mode2
+        self.model = self.model.to(self.device)
 
-        elif isinstance(self.model, Models.SimpleConv_CF_free) or isinstance(self.model, Models.Br_Net_CF_free):
-            self.train_adversarial(mode="CF_free")
+        # loss functions
+        class_loss_function = self.model.loss
+        adversary_loss_function = self.model.adv_loss
+        adversary2_loss_function = self.model.adv2_loss
+
+        self.model.train()
+        for batch, (X,label) in enumerate(self.train_dataloader):
+            X = X.to(self.device)
+            y = label["y"].to(self.device)
+            adversary_label = label[adversary_mode].to(self.device)
+            adversary2_label = label[adversary2_mode].to(self.device)
+
+            # prediction
+            class_pred, adversary_pred, adversary2_pred = self.model(X)
+            adversary_label, adversary_pred, adversary2_label, adversary2_pred = condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
+
+            # compute error
+            class_loss = class_loss_function(class_pred, y)
+            adversary_loss = adversary_loss_function(adversary_pred, adversary_label)
+            adversary2_loss = adversary2_loss_function(adversary2_pred, adversary2_label)
+            loss = class_loss + adversary_loss + adversary2_loss
+
+            # Backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+        return
+
+    def run(self):
+        if self.model.adversarial:
+            if isinstance(self.model, Models.BrNet_adversarial_double):
+                self.train_adversarial_double()
+            else:
+                self.train_adversarial()
         else:
             self.train_normal()
 
-        #accuracy, loss = self.test()
         return
 
 
 class confounder:
     all_results = pd.DataFrame()
     t = None
-    def __init__(self, seed=42, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
+    def __init__(self, seed=41, mode="NeuralNetwork", debug=False, clean_results=False, start_timer=False, tune=False, name=None):
         torch.backends.cudnn.benchmark = True
-        np.random.seed(seed)
-        torch.manual_seed(seed)
         self.mode = mode
+        self.seed = seed
         self.test_dataloader = []
         self.train_dataloader = None
 
@@ -610,11 +640,13 @@ class confounder:
         self.train_y = None
         self.train_domain_labels = None
         self.train_confounder_labels = None
+        self.train_confounder_features = None
 
         self.test_x = None
         self.test_y = None
         self.test_domain_labels = None
         self.test_confounder_labels = None
+        self.test_confounder_features = None
 
         self.results = None
         self.loss = []
@@ -624,6 +656,7 @@ class confounder:
         self.model_title_add = ""
         self.tune = tune
         self.name = name
+        self.wandb_sweep_init = None
 
 
         if start_timer:
@@ -636,16 +669,26 @@ class confounder:
             print("--- constructor ---")
             #print("Model:\n",model)
 
+    def reset_seed(self):
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
 
-    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, conditioning=-1, params=None):
+    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
+        self.reset_seed()
+
         iterations = len(test_confounding)
-        self.train_x, self.test_x = np.empty((iterations,samples*2 + target_domain_samples*2,1,32,32)), np.empty((iterations,samples*2,1,32,32))
-        self.train_y, self.test_y = np.empty((iterations,samples*2 + target_domain_samples*2)), np.empty((iterations,samples*2))
-        self.train_domain_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
-        self.test_domain_labels = np.empty((iterations,samples*2))
-        self.train_confounder_labels = np.empty((iterations,samples*2 + target_domain_samples*2))
-        self.test_confounder_labels = np.empty((iterations,samples*2))
-        self.conditioning = conditioning
+        self.n_classes = len(params[0])
+        self.train_x, self.test_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32)), np.empty((iterations,samples*self.n_classes,1,32,32))
+        self.train_y, self.test_y = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes)), np.empty((iterations,samples*self.n_classes))
+        self.train_domain_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_domain_labels = np.empty((iterations,samples*self.n_classes))
+
+        self.train_confounder_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_confounder_labels = np.empty((iterations,samples*self.n_classes))
+
+        self.train_confounder_features = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_confounder_features = np.empty((iterations,samples*self.n_classes))
+
         self.samples = samples
         self.target_domain_samples = target_domain_samples
         self.overlap = overlap
@@ -657,27 +700,27 @@ class confounder:
         self.params = params
 
 
-        if conditioning != -1:
-            self.model_title_add = f"(conditioning={conditioning})"
 
         self.index = test_confounding
 
         # train data
         g_train = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=train_confounding, params=params, domain=0)
         g_train_data = g_train.get_data()
-        self.train_x[0,:samples*2] = g_train_data[0]
-        self.train_y[0,:samples*2] = g_train_data[1]
-        self.train_domain_labels[0,:samples*2] = g_train_data[2]
-        self.train_confounder_labels[0,:samples*2] = g_train_data[3]
+        self.train_x[0,:samples*self.n_classes] = g_train_data[0]
+        self.train_y[0,:samples*self.n_classes] = g_train_data[1]
+        self.train_domain_labels[0,:samples*self.n_classes] = g_train_data[2]
+        self.train_confounder_labels[0,:samples*self.n_classes] = g_train_data[3]
+        self.train_confounder_features[0,:samples*self.n_classes] = g_train_data[4]
 
         # append target domain_labels data to source domain_labels data
         if target_domain_samples != 0:
-            g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target, conditioning=conditioning)
+            g_target_domain = generator(mode=mode, samples=target_domain_samples, overlap=overlap, confounding_factor=target_domain_confounding, params=params, domain=1, de_correlate_confounder=de_correlate_confounder_target)
             g_target_domain_data =g_target_domain.get_data()
-            self.train_x[0,samples*2:] = g_target_domain_data[0]
-            self.train_y[0,samples*2:] = g_target_domain_data[1]
-            self.train_domain_labels[0,samples*2:] = g_target_domain_data[2]
-            self.train_confounder_labels[0,samples*2:] = g_target_domain_data[3]
+            self.train_x[0,samples*self.n_classes:] = g_target_domain_data[0]
+            self.train_y[0,samples*self.n_classes:] = g_target_domain_data[1]
+            self.train_domain_labels[0,samples*self.n_classes:] = g_target_domain_data[2]
+            self.train_confounder_labels[0,samples*self.n_classes:] = g_target_domain_data[3]
+            self.train_confounder_features[0,samples*self.n_classes:] = g_target_domain_data[4]
 
         i = 0
         for cf_var in test_confounding:
@@ -688,6 +731,7 @@ class confounder:
             self.test_y[i] = g_test_data[1]
             self.test_domain_labels[i] = g_test_data[2]
             self.test_confounder_labels[i] = g_test_data[3]
+            self.test_confounder_features[i] = g_test_data[4]
 
 
             i += 1
@@ -697,12 +741,13 @@ class confounder:
                 #print("Generated Data of dimension ", self.train_x.shape)
         return self.train_x, self.train_y, self.test_x, self.test_y
 
+    def inject_confounder(self, type=None):
+        pass
 
-    def train(self, use_tune=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, loss_fn = nn.CrossEntropyLoss(), batch_size=1, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, use_wandb=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
+        self.reset_seed()
         name = model.get_name()
-
-        if self.conditioning != -1:
-            name += f" {self.conditioning}"
+        self.model = copy.deepcopy(model)
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -710,24 +755,14 @@ class confounder:
             else:
                 device="cpu"
 
-        if wandb_init != None:
-            if "project" not in wandb_init:
-                wandb_init["project"] = "None"
-            if "group" not in wandb_init:
-                wandb_init["group"] = "None"
-            if "time" not in wandb_init:
-                wandb_init["time"] = "None"
 
         config = {
             "model":name,
             "epochs":epochs,
             "device": device,
             "optimizer": optimizer,
-            "loss_fn": loss_fn,
-            "batch_size": batch_size,
-            "alpha": model.alpha,
-            "lr": hyper_params["lr"],
-            "weight_decay": hyper_params["weight_decay"],
+            "loss": model.loss,
+            "adversarial_loss": model.adv_loss,
             "samples": self.samples,
             "target_domain_samples": self.target_domain_samples,
             "overlap": self.overlap,
@@ -737,32 +772,67 @@ class confounder:
             "de_correlate_confounder_test": self.de_correlate_confounder_test,
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
+            "seed": self.seed,
         }
 
-        if wandb_init != None:
-            config["date"] = wandb_init["time"]
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"])
+        if use_wandb:
+            if "project" not in wandb_init:
+                wandb_init["project"] = "None"
+            if "group" not in wandb_init:
+                wandb_init["group"] = "None"
+            if "date" not in wandb_init:
+                wandb_init["date"] = "None"
+            if "batch_date" not in wandb_init:
+                wandb_init["batch_date"] = "None"
+            config["date"] = wandb_init["date"]
+            config["batch_date"] = wandb_init["batch_date"]
+
+        # if we use wandb sweep the hyperparams are already set by wandb
+        if not wandb_sweep:
+            config["alpha"] = self.model.alpha
+            config["alpha2"] = self.model.alpha2
+            config["lr"] = hyper_params["lr"]
+            config["weight_decay"] = hyper_params["weight_decay"]
+            config["batch_size"] = hyper_params["batch_size"]
+
+        if hasattr(model, "conditioning"):
+            config["conditioning"] = self.model.conditioning
+        if hasattr(model, "mode"):
+            config["adversary_mode"] = self.model.mode
+        if hasattr(model, "mode2"):
+            config["adversary2_mode"] = self.model.mode2
+
+        if use_wandb:
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
+            config = wandb.config
+
+        if wandb_sweep:
+            # setting hyperparameters
+            if "alpha" in config:
+                self.model.alpha = wandb.config["alpha"]
+            if "alpha2" in config:
+                self.model.alpha2 = wandb.config["alpha2"]
 
         delta_t = time.time()
         set = 0
         results = {"confounder_strength":[],"model_name":[],"epoch":[],"classification_accuracy":[], "confounder_accuracy":[]}
 
-
         if hyper_params == None:
-            raise AssertionError("Choose some hyperparameter for the optimizer")
-        if not 'weight_decay' in hyper_params:
-            hyper_params['weight_decay'] = 0
+            if not wandb_sweep:
+                raise AssertionError("Choose some hyperparameter for the optimizer")
+        # else:
+        #     if not 'weight_decay' in config:
+        #         config['weight_decay'] = 0
 
-        self.model = copy.deepcopy(model)
-        model_optimizer = optimizer(params=self.model.parameters(), lr=hyper_params['lr'], weight_decay=hyper_params["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[set],self.train_y[set], domain=self.train_domain_labels[set], confounder=self.train_confounder_labels[set], batch_size=batch_size).get_dataloader()
+        model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
+        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
         for cf_var in range(0,len(self.index)):
-            self.test_dataloader.append(create_dataloader(self.test_x[cf_var],self.test_y[cf_var], domain=self.test_domain_labels[cf_var], confounder=self.test_confounder_labels[cf_var], batch_size=batch_size).get_dataloader())
+            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
         for i in range(0, epochs):
             # load new results
 
-            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer, loss_fn)
+            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer)
             t.run()
 
             for cf_var in range(0,len(self.index)):
@@ -774,20 +844,26 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if wandb_init != None:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1})
+                if use_wandb and ((i+1) % epochs) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
+                elif use_wandb and (i % 10) == 0:
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
 
-                # register accuracy in use_tune
-                if use_tune:
-                    assert(len(self.index)==1)
-                    tune.report(mean_accuracy=classification_accuracy)
+                # if wandb_init != None and ((i+1) % 10) == 0:
+                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
-        if wandb_init != None:
+            # register accuracy in use_tune
+                if use_tune:# and ((i+1) % 10) == 0:
+                   assert(len(self.index)==1)
+                   tune.report(mean_accuracy=classification_accuracy)
+
+        if use_wandb:
+            #wandb.log()
             wandb.config.update({"trained_model": self.model},allow_val_change=True)
             wandb.finish()
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
-        #confounder.all_results.append(self.results)
+        #confounder_labels.all_results.append(self.results)
 
         if self.debug:
             print("--- train ---")
@@ -795,15 +871,7 @@ class confounder:
 
         return self.results
 
-    #@wandb_mixin
-    def train_tune(self, config):
-        config["model"].alpha = config["alpha"]
-        self.train(use_tune=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], batch_size=config["batch_size"], hyper_params={"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
-
-        return
-
-
-    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False):
+    def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
         p = plot()
         model_name = self.model.get_name()
 
@@ -811,7 +879,7 @@ class confounder:
             p.accuracy_vs_epoch(self.results)
 
         if accuracy_vs_strength:
-            p.accuracy_vs_strength(self.results)
+            p.accuracy_vs_strength(self.results, n_classes=self.n_classes, ideal=epoch_vs_strength_ideal)
 
         if plot_all:
             p.accuracy_vs_epoch_all(confounder.all_results)
@@ -951,14 +1019,41 @@ def sync_wandb_data(project=None):
         "name": name_list
     })
 
-    runs_df.to_csv(f"{project}.csv")
+    #runs_df.to_csv(f"{project}.csv")
     #runs_df.to_pickle(f"{project}.pkl")
     runs_df.to_json(f"{project}.json")
     print(f"Syncing took {time.time() - t} seconds")
 
-def get_dates(file):
+def get_from_table(file, string):
     df = pd.read_json(file)
-    df = {d["date"] for d in df["config"]}
+    df = {d[string] for d in df["config"]}
     df = [d for d in df]
     df.sort(reverse=True)
     return df
+
+def condition_and_filter(y, real, pred, condition):
+    #assert(real != -1)
+    if condition != None:
+        filtered_real = real[y == condition]
+        filtered_pred = pred[y == condition]
+    else:
+        filtered_real = real
+        filtered_pred = pred
+
+    return filtered_real, filtered_pred
+
+def condition_and_filter_double(y, real, pred, real2, pred2, condition):
+    #assert(real != -1)
+    if condition != None:
+        filtered_real = real[y == condition]
+        filtered_pred = pred[y == condition]
+        filtered_real2 = real2[y == condition]
+        filtered_pred2 = pred2[y == condition]
+    else:
+        filtered_real = real
+        filtered_pred = pred
+        filtered_real2 = real2
+        filtered_pred2 = pred2
+
+    return filtered_real, filtered_pred, filtered_real2, filtered_pred2
+
