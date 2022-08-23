@@ -22,8 +22,8 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-#cpus_per_trial = 128
-ray.init(address="auto", num_cpus=128)
+cpus_per_trial = 128
+ray.init(address="auto")
 
 search_space = {
     "epochs":epochs,
@@ -52,7 +52,7 @@ def train_tune(config):
 
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
-    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], resources_per_trial={"cpu":cpus_per_trial})
 
 
 def run_tune():
