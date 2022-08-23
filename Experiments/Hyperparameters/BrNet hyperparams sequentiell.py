@@ -46,7 +46,7 @@ search_space = {
     },
 }
 
-def train_tune(config):
+def train_tune(config, checkpoint_dir=None):
     if not "wandb_init" in config:
         config["wandb_init"] = None
 
