@@ -21,7 +21,7 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 128
+samples = 256
 cpus_per_trial = 2
 
 search_space = {
