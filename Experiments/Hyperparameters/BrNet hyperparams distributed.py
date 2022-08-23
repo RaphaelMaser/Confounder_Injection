@@ -12,6 +12,7 @@ from ray.tune import CLIReporter
 import datetime
 import argparse
 import os
+import time
 
 params = [
     [[1, 4], [3, 6]], # real feature
@@ -21,9 +22,7 @@ params = [
 e = datetime.datetime.now()
 epochs = 10000
 samples = 128
-target_domain_samples = 16
-#max_concurrent_trials = 1
-#ressources_per_trial = {"cpu":8, "gpu":0}
+cpus_per_trial = 2
 
 
 search_space = {
@@ -46,11 +45,24 @@ search_space = {
     },
 }
 
-def run_tune():
+def train_tune(config):
+    if "alpha" in config:
+        config["model"].alpha = config["alpha"]
+    if "alpha2" in config:
+        config["model"].alpha2 = config["alpha2"]
+    if not "wandb_init" in config:
+        config["wandb_init"] = None
+
     c = CI.confounder()
-    c.generate_data(mode="br_net", samples=512, overlap=0, target_domain_samples=target_domain_samples, target_domain_confounding=1, train_confounding=1, test_confounding=[1], de_correlate_confounder_target=True, de_correlate_confounder_test=True, params=params)
-    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
-    analysis = tune.run(c.train_tune,num_samples=samples, resources_per_trial=ressources_per_trial, config=search_space)#, scheduler=ASHAScheduler(metric="mean_accuracy", mode="max", max_t=epochs))
+    c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+
+
+def run_tune():
+    #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    model_name = search_space["model"].get_name()
+    tune.run(train_tune,num_samples=samples, config=search_space,
+             resources_per_trial={"cpu":cpus_per_trial, "gpu":0}, local_dir=f"~/ray_results/target_domain_samples={target_domain_samples},test_confounding={test_confounding},model={model_name}/{args.date}")
 
 
 def BrNet_hyperparams():
@@ -147,16 +159,24 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune()
 
 os.environ['WANDB_MODE'] = 'run'
-os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
-# parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('-c', action="store", type=int, dest="cpus", help="Define the number of cpus for execution")
+parser.add_argument('-i', action="store", type=int, dest="experiment_number", help="Define the number of experiment to execute")
+parser.add_argument('-v', action="store", type=int, dest="experiment_number_add", help="Define the number of experiment to execute")
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
+parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
+parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
+parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
+parser.add_argument('-de_correlate_confounder_target', type=int, action="store", dest="de_correlate_confounder_target", help="Define if target domain should be de-correlated")
+parser.add_argument('-de_correlate_confounder_test', type=int, action="store", dest="de_correlate_confounder_test", help="Define if target domain should be de-correlated")
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
-#ray.init(num_cpus=args.cpus)
-ressources_per_trial = {"cpu":args.cpus, "gpu":0}
+test_confounding = args.test_confounding
+target_domain_samples = args.target_domain_samples
+target_domain_confounding = args.target_domain_confounding
+de_correlate_confounder_target = args.de_correlate_confounder_target
+de_correlate_confounder_test = args.de_correlate_confounder_test
 
 # run experiments
 BrNet_hyperparams()
