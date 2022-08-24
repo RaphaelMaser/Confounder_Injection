@@ -47,6 +47,10 @@ search_space = {
 }
 
 def train_tune(config, checkpoint_dir=None):
+    if "alpha" in config:
+        config["model"].alpha = config["alpha"]
+    if "alpha2" in config:
+        config["model"].alpha2 = config["alpha2"]
     if not "wandb_init" in config:
         config["wandb_init"] = None
 
