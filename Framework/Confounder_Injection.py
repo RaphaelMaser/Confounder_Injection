@@ -863,6 +863,7 @@ class confounder:
             "seed": self.seed,
         }
 
+
         if use_wandb:
             if "project" not in wandb_init:
                 wandb_init["project"] = "None"
