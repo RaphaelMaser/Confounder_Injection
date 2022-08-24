@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from ray.tune.integration.wandb import wandb_mixin
 
 import Framework.Confounder_Injection as CI
 import Framework.Models as Models
@@ -41,11 +42,12 @@ search_space = {
     "wandb_init" : {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
-        "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
         "group": "BrNet",
+        "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
     },
 }
 
+@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
     if "alpha" in config:
         config["model"].alpha = config["alpha"]

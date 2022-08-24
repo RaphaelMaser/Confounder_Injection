@@ -67,7 +67,9 @@ def run_tune():
                 "batch_size": search_space["batch_size"],
                 "alpha": search_space["alpha"],
                 "alpha2": search_space["alpha2"],
-            }
+            },
+        metric="mean_accuracy",
+        mode="max"
         )
     model_name = search_space["model"].get_name()
     tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
