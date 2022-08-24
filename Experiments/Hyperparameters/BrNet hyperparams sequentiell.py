@@ -22,7 +22,6 @@ params = [
 
 e = datetime.datetime.now()
 epochs = 10000
-samples = 128
 cpus_per_trial = 128
 ray.init(num_cpus=128)
 
@@ -47,6 +46,27 @@ search_space = {
     },
 }
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', action="store", dest="date", help="Define the date")
+parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
+parser.add_argument('-pbt', action="store", dest="pbt", help="Define the scheduler")
+parser.add_argument('-samples', action="store", dest="samples", help="Define the scheduler")
+parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
+parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
+parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
+parser.add_argument('-de_correlate_confounder_target', type=int, action="store", dest="de_correlate_confounder_target", help="Define if target domain should be de-correlated")
+parser.add_argument('-de_correlate_confounder_test', type=int, action="store", dest="de_correlate_confounder_test", help="Define if target domain should be de-correlated")
+args = parser.parse_args()
+search_space["wandb_init"]["batch_date"] = args.date
+search_space["wandb_init"]["pbt"] = args.pbt
+test_confounding = args.test_confounding
+target_domain_samples = args.target_domain_samples
+target_domain_confounding = args.target_domain_confounding
+de_correlate_confounder_target = args.de_correlate_confounder_target
+de_correlate_confounder_test = args.de_correlate_confounder_test
+samples = args.samples
+pbt = args.pbt
+
 @wandb_mixin
 def train_tune(config, checkpoint_dir=None):
     if "alpha" in config:
@@ -63,20 +83,24 @@ def train_tune(config, checkpoint_dir=None):
 
 def run_tune():
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=600*3)
-    scheduler = tune.schedulers.PopulationBasedTraining(
-        time_attr="training_iteration",
-        perturbation_interval=5,
-        hyperparam_mutations=
-        {
-            "lr":search_space["lr"],
-            "weight_decay": search_space["weight_decay"],
-            "batch_size": search_space["batch_size"],
-            "alpha": search_space["alpha"],
-            "alpha2": search_space["alpha2"],
-        },
-        metric="mean_accuracy",
-        mode="max"
-    )
+    if pbt:
+        scheduler = tune.schedulers.PopulationBasedTraining(
+            time_attr="training_iteration",
+            perturbation_interval=5,
+            hyperparam_mutations=
+            {
+                "lr":search_space["lr"],
+                "weight_decay": search_space["weight_decay"],
+                "batch_size": search_space["batch_size"],
+                "alpha": search_space["alpha"],
+                "alpha2": search_space["alpha2"],
+            },
+            metric="mean_accuracy",
+            mode="max"
+        )
+    else:
+        scheduler = None
+
     model_name = search_space["model"].get_name()
     tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
@@ -160,22 +184,6 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
 
 os.environ['WANDB_MODE'] = 'run'
 #os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
-
-parser = argparse.ArgumentParser()
-parser.add_argument('-d', action="store", dest="date", help="Define the date")
-parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
-parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
-parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
-parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
-parser.add_argument('-de_correlate_confounder_target', type=int, action="store", dest="de_correlate_confounder_target", help="Define if target domain should be de-correlated")
-parser.add_argument('-de_correlate_confounder_test', type=int, action="store", dest="de_correlate_confounder_test", help="Define if target domain should be de-correlated")
-args = parser.parse_args()
-search_space["wandb_init"]["batch_date"] = args.date
-test_confounding = args.test_confounding
-target_domain_samples = args.target_domain_samples
-target_domain_confounding = args.target_domain_confounding
-de_correlate_confounder_target = args.de_correlate_confounder_target
-de_correlate_confounder_test = args.de_correlate_confounder_test
 
 # run experiments
 BrNet_hyperparams()
