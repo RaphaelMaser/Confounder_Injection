@@ -148,41 +148,53 @@ class plot:
         sbs.lineplot(x)
         return
 
-class plot_from_csv:
-    def __init__(self, fontsize=18):
-        self.fontsize = fontsize
+class wandb_sync:
+    def __init__(self):
         pass
 
-    # if None then newest is taken
-    def accuracy_vs_epoch(self, project_csv_path, config_filter, groupby):
-        df_list = self.convert_and_filter_df(project_csv_path, config_filter)
-        title = ""
-        for cf in config_filter:
-            title = f"{title} \n {cf}={config_filter[cf]}"
-        fig, ax = plt.subplots(2,1,figsize=(20,14))
-        fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
-        #model_name = df["model"]
+    @staticmethod
+    def sync_wandb_data(project=None):
+        t = time.time()
+        assert(project is not None)
+        entity = "confounder_in_ml"
+        if project==None:
+            project = "BrNet on br_net data"
 
-        #for df in df_list:
-            #name = df["model"][0]
-        #for df in range(len(df_list)):
-            #df_list[df].to_csv(f"df {df}.csv")
-        #df_list[1].to_csv("df file.csv")
-        df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
-        #df.to_csv("df file.csv")
-        classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
-        sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
+        api = wandb.Api()
+        runs = api.runs(entity + "/" + project)
 
-        if "confounder_accuracy" in df:
-            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
-            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+        history_list, config_list, name_list = [], [], []
+        for run in runs:
+            # .summary contains the output keys/values for metrics like accuracy.
+            #  We call ._json_dict to omit large files
+            history_list.append(run.history(samples=100000))
 
-        plt.tight_layout()
-        return
+            # .config contains the hyperparameters.
+            #  We remove special values that start with _.
+            config_list.append(
+                {k: v for k,v in run.config.items()
+                 if not k.startswith('_')})
 
+            # .name is the human-readable name of the run.
+            name_list.append(run.name)
+        history_dict = [hl.to_dict() for hl in history_list]
 
+        #print(history_dict)
+        #print("\n\n")
+        #print(history_dict)
+        runs_df = pd.DataFrame({
+            "history": history_dict,
+            "config": config_list,
+            "name": name_list
+        })
 
-    def convert_and_filter_df(self, project_csv_path, config_filter):
+        #runs_df.to_csv(f"{project}.csv")
+        #runs_df.to_pickle(f"{project}.pkl")
+        runs_df.to_json(f"{project}.json")
+        print(f"Syncing took {time.time() - t} seconds")
+
+    @staticmethod
+    def convert_and_filter_df(project_csv_path, config_filter):
         project_df = pd.read_json(project_csv_path)
         #project_df.to_csv("project_df.csv")
         # filter data
@@ -232,6 +244,60 @@ class plot_from_csv:
 
 
         return filtered_dfs
+    # returns best network from a wandb project and one specific run (marked by batch_date)
+
+    # get runs matching a specific project, batch_date and tag
+    @staticmethod
+    def get_runs(project=None, batch_date=None, tag=None):
+        assert(project!=None and batch_date!=None and tag!=None)
+
+        filters = {
+            "config.batch_date": batch_date,
+            "tags": "best",
+        }
+        api = wandb.Api()
+        runs = list(api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="-summary_metrics.accuracy"))
+        return runs
+
+class plot_from_wandb:
+    def __init__(self, fontsize=18):
+        self.fontsize = fontsize
+        pass
+
+    def get_from_table(self, file, string):
+        df = pd.read_json(file)
+        df = {d[string] for d in df["config"]}
+        df = [d for d in df]
+        df.sort(reverse=True)
+        return df
+
+    # if None then newest is taken
+    # basically deprecated (only used when experiments are done seperately from the hyperparameters)
+    def accuracy_vs_epoch(self, project_csv_path, config_filter, groupby):
+        df_list = wandb_sync.convert_and_filter_df(project_csv_path, config_filter)
+        title = ""
+        for cf in config_filter:
+            title = f"{title} \n {cf}={config_filter[cf]}"
+        fig, ax = plt.subplots(2,1,figsize=(20,14))
+        fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
+        #model_name = df["model"]
+
+        #for df in df_list:
+            #name = df["model"][0]
+        #for df in range(len(df_list)):
+            #df_list[df].to_csv(f"df {df}.csv")
+        #df_list[1].to_csv("df file.csv")
+        df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
+        #df.to_csv("df file.csv")
+        classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
+        sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
+
+        if "confounder_accuracy" in df:
+            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+
+        plt.tight_layout()
+        return
 
 
 class CfDataset(torch.utils.data.Dataset):
@@ -499,14 +565,11 @@ class confounder_injection:
         pass
 
 class train:
-    def __init__(self, mode, model, train_dataloader, device, optimizer):
+    def __init__(self, model, device="cpu"):
         self.model = model
-        self.mode = mode
-        self.train_dataloader = train_dataloader
         self.device = device
         self.accuracy = []
         self.loss = []
-        self.optimizer = optimizer
 
     def test(self, test_dataloader):
         size = len(test_dataloader.dataset)
@@ -534,11 +597,11 @@ class train:
 
         return classification_accuracy, confounder_accuracy
 
-    def train_normal(self):
+    def train_normal(self, train_dataloader, optimizer):
         self.model = self.model.to(self.device)
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
 
@@ -547,12 +610,12 @@ class train:
             loss = self.model.loss(class_pred, y)
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def train_adversarial(self):
+    def train_adversarial(self, train_dataloader, optimizer):
         adversarial_mode = self.model.mode
         self.model = self.model.to(self.device)
 
@@ -561,14 +624,14 @@ class train:
         adversarial_loss_function = self.model.adv_loss
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adversary_label = label[adversarial_mode].to(self.device)
 
             # prediction
             class_pred, adversary_pred, _ = self.model(X)
-            adversary_label, adversary_pred = condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
+            adversary_label, adversary_pred = self.condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
 
             # compute error
             class_loss = class_loss_function(class_pred, y)
@@ -576,13 +639,13 @@ class train:
             loss = class_loss + adversary_loss
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
 
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def train_adversarial_double(self):
+    def train_adversarial_double(self, train_dataloader, optimizer):
         adversary_mode = self.model.mode
         adversary2_mode = self.model.mode2
         self.model = self.model.to(self.device)
@@ -593,7 +656,7 @@ class train:
         adversary2_loss_function = self.model.adv2_loss
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adversary_label = label[adversary_mode].to(self.device)
@@ -601,7 +664,7 @@ class train:
 
             # prediction
             class_pred, adversary_pred, adversary2_pred = self.model(X)
-            adversary_label, adversary_pred, adversary2_label, adversary2_pred = condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
+            adversary_label, adversary_pred, adversary2_label, adversary2_pred = self.condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
 
             # compute error
             class_loss = class_loss_function(class_pred, y)
@@ -610,21 +673,47 @@ class train:
             loss = class_loss + adversary_loss + adversary2_loss
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def run(self):
+    def run(self, train_dataloader, optimizer):
         if self.model.adversarial:
             if isinstance(self.model, Models.BrNet_adversarial_double):
-                self.train_adversarial_double()
+                self.train_adversarial_double(train_dataloader=train_dataloader, optimizer=optimizer)
             else:
-                self.train_adversarial()
+                self.train_adversarial(train_dataloader=train_dataloader, optimizer=optimizer)
         else:
-            self.train_normal()
+            self.train_normal(train_dataloader=train_dataloader, optimizer=optimizer)
 
         return
+
+    def condition_and_filter(sekf, y, real, pred, condition):
+        #assert(real != -1)
+        if condition != None:
+            filtered_real = real[y == condition]
+            filtered_pred = pred[y == condition]
+        else:
+            filtered_real = real
+            filtered_pred = pred
+
+        return filtered_real, filtered_pred
+
+    def condition_and_filter_double(self, y, real, pred, real2, pred2, condition):
+        #assert(real != -1)
+        if condition != None:
+            filtered_real = real[y == condition]
+            filtered_pred = pred[y == condition]
+            filtered_real2 = real2[y == condition]
+            filtered_pred2 = pred2[y == condition]
+        else:
+            filtered_real = real
+            filtered_pred = pred
+            filtered_real2 = real2
+            filtered_pred2 = pred2
+
+        return filtered_real, filtered_pred, filtered_real2, filtered_pred2
 
 
 class confounder:
@@ -634,8 +723,6 @@ class confounder:
         torch.backends.cudnn.benchmark = True
         self.mode = mode
         self.seed = seed
-        self.test_dataloader = []
-        self.train_dataloader = None
 
         self.train_x = None
         self.train_y = None
@@ -826,18 +913,19 @@ class confounder:
         #         config['weight_decay'] = 0
 
         model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
+        train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
+        test_dataloader = []
         for cf_var in range(0,len(self.index)):
-            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
+            test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
         for epoch in range(1, epochs+1):
             # load new results
 
-            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer)
-            t.run()
+            t = train(self.model, device)
+            t.run(train_dataloader, model_optimizer)
 
             for cf_var in range(0,len(self.index)):
-                classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[cf_var])
+                classification_accuracy, confounder_accuracy = t.test(test_dataloader[cf_var])
 
                 results["confounder_strength"].append(self.index[cf_var])
                 results["model_name"].append(self.model.get_name()+self.model_title_add)
@@ -868,6 +956,8 @@ class confounder:
                             },
                             path,
                         )
+                        if use_wandb and epoch == epochs:
+                            wandb.save(path)
                     # report to tune
                     tune.report(mean_accuracy=classification_accuracy)
 
@@ -884,6 +974,23 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
+
+    def test(self, batch_size=1):
+        assert(len(self.test_x) == 1)
+        # create test dataloader
+        test_dataloader = create_dataloader(self.test_x[0], self.test_y[0], domain_labels=self.test_domain_labels[0], confounder_labels=self.test_confounder_labels[0], batch_size=batch_size, confounder_features=self.test_confounder_features[0]).get_dataloader()
+        t = train(self.model)
+        classification_accuracy, confounder_accuracy = t.test(test_dataloader)
+
+    def test_best_networks(self, batch_date=None):
+        # get best runs
+        best_runs = wandb_sync.get_runs(project="Hyperparameters", batch_date=batch_date, tag="best")
+
+        # test the networks on test data
+        for b in best_runs:
+            model = b.config["model"]
+
+
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
         p = plot()
@@ -998,76 +1105,4 @@ class confounder:
         t = time.time() - confounder.t
         print(f"Computation took {int(t/60)} min and {int(t%60)} s")
 
-def sync_wandb_data(project=None):
-    t = time.time()
-    assert(project is not None)
-    entity = "confounder_in_ml"
-    if project==None:
-        project = "BrNet on br_net data"
-
-    api = wandb.Api()
-    runs = api.runs(entity + "/" + project)
-
-    history_list, config_list, name_list = [], [], []
-    for run in runs:
-        # .summary contains the output keys/values for metrics like accuracy.
-        #  We call ._json_dict to omit large files
-        history_list.append(run.history(samples=100000))
-
-        # .config contains the hyperparameters.
-        #  We remove special values that start with _.
-        config_list.append(
-            {k: v for k,v in run.config.items()
-             if not k.startswith('_')})
-
-        # .name is the human-readable name of the run.
-        name_list.append(run.name)
-    history_dict = [hl.to_dict() for hl in history_list]
-
-    #print(history_dict)
-    #print("\n\n")
-    #print(history_dict)
-    runs_df = pd.DataFrame({
-        "history": history_dict,
-        "config": config_list,
-        "name": name_list
-    })
-
-    #runs_df.to_csv(f"{project}.csv")
-    #runs_df.to_pickle(f"{project}.pkl")
-    runs_df.to_json(f"{project}.json")
-    print(f"Syncing took {time.time() - t} seconds")
-
-def get_from_table(file, string):
-    df = pd.read_json(file)
-    df = {d[string] for d in df["config"]}
-    df = [d for d in df]
-    df.sort(reverse=True)
-    return df
-
-def condition_and_filter(y, real, pred, condition):
-    #assert(real != -1)
-    if condition != None:
-        filtered_real = real[y == condition]
-        filtered_pred = pred[y == condition]
-    else:
-        filtered_real = real
-        filtered_pred = pred
-
-    return filtered_real, filtered_pred
-
-def condition_and_filter_double(y, real, pred, real2, pred2, condition):
-    #assert(real != -1)
-    if condition != None:
-        filtered_real = real[y == condition]
-        filtered_pred = pred[y == condition]
-        filtered_real2 = real2[y == condition]
-        filtered_pred2 = pred2[y == condition]
-    else:
-        filtered_real = real
-        filtered_pred = pred
-        filtered_real2 = real2
-        filtered_pred2 = pred2
-
-    return filtered_real, filtered_pred, filtered_real2, filtered_pred2
 
