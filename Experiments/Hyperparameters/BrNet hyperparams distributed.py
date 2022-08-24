@@ -56,7 +56,7 @@ def train_tune(config):
 
 
 def run_tune():
-    #reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
+    reporter = CLIReporter(max_progress_rows=1, max_report_frequency=120)
     scheduler = tune.schedulers.PopulationBasedTraining(
         time_attr="training_iteration",
         perturbation_interval=5,
@@ -70,7 +70,7 @@ def run_tune():
             }
         )
     model_name = search_space["model"].get_name()
-    tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4,
+    tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              local_dir=f"~/ray_results/target_domain_samples={target_domain_samples},test_confounding={test_confounding},model={model_name}/{args.date}")
 
