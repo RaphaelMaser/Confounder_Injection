@@ -1019,7 +1019,7 @@ class confounder:
         if use_wandb:
             path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
             torch.save(self.model.state_dict(), path)
-            wandb.save(path, policy="now", base_path="/ray_results")
+            wandb.save(path, policy="now")
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
