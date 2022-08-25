@@ -21,7 +21,7 @@ params = [
 ]
 
 e = datetime.datetime.now()
-epochs = 100
+epochs = 10000
 #cpus_per_trial = 128
 ray.init(num_cpus=128)
 
