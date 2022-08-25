@@ -1017,7 +1017,7 @@ class confounder:
                     tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
-            path = os.path.join(os.getcwd(),"wandb_model_state_dicts", str(config["random"]) + ".pt")
+            path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
             torch.save(self.model.state_dict(), path)
             wandb.save(path, policy="now")
             #wandb.log()
