@@ -60,7 +60,7 @@ parser.add_argument('-de_correlate_confounder_test', type=int, action="store", d
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
 search_space["wandb_init"]["pbt"] = args.pbt
-search_space["wandb_init"]["epochs"] = args.epochs
+search_space["epochs"] = args.epochs
 test_confounding = args.test_confounding
 target_domain_samples = args.target_domain_samples
 target_domain_confounding = args.target_domain_confounding
@@ -68,6 +68,7 @@ de_correlate_confounder_target = args.de_correlate_confounder_target
 de_correlate_confounder_test = args.de_correlate_confounder_test
 samples = args.samples
 pbt = args.pbt
+epochs = args.epochs
 
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
