@@ -21,12 +21,12 @@ params = [
 ]
 
 e = datetime.datetime.now()
-epochs = 1000
+#epochs = 1000
 #cpus_per_trial = 128
 ray.init(num_cpus=128)
 
 search_space = {
-    "epochs":epochs,
+    #"epochs":epochs,
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
     "alpha":tune.uniform(0,1),
@@ -50,6 +50,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
 parser.add_argument('-pbt', action="store", type=int, dest="pbt", help="Define the scheduler")
+parser.add_argument('-epochs', action="store", type=int, dest="epochs", help="Define the scheduler")
 parser.add_argument('-samples', action="store", type=int, dest="samples", help="Define the scheduler")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
@@ -59,6 +60,7 @@ parser.add_argument('-de_correlate_confounder_test', type=int, action="store", d
 args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
 search_space["wandb_init"]["pbt"] = args.pbt
+search_space["wandb_init"]["epochs"] = args.epochs
 test_confounding = args.test_confounding
 target_domain_samples = args.target_domain_samples
 target_domain_confounding = args.target_domain_confounding

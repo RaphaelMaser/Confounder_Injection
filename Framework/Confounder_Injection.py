@@ -846,6 +846,7 @@ class confounder:
 
         config = {
             "model":name,
+            "model_class":type(self.model).__name__,
             "epochs":epochs,
             "device": device,
             "optimizer": optimizer,
@@ -983,10 +984,16 @@ class confounder:
         t = train(self.model)
         classification_accuracy, confounder_accuracy = t.test(test_dataloader)
 
+    def create_models_from_runs(self, runs):
+        for r in runs:
+            model_name = r.name
+
+        pass
+
     def test_best_networks(self, batch_date=None):
         # get best runs
         best_runs = wandb_sync.get_runs(project="Hyperparameters", batch_date=batch_date, tag="best")
-
+        best_runs_names = [b.name for b in best_runs]
         # test the networks on test data
         for b in best_runs:
             model = b.config["model"]
