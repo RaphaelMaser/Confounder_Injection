@@ -104,7 +104,8 @@ def run_tune():
     model_name = search_space["model"].get_name()
     tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
-             local_dir=f"~/ray_results/target_domain_samples={target_domain_samples},test_confounding={test_confounding},model={model_name}/{args.date}")
+             #local_dir=f"~/ray_results/target_domain_samples={target_domain_samples},test_confounding={test_confounding},model={model_name}/{args.date}"
+    )
 
 
 def BrNet_hyperparams():
