@@ -67,7 +67,7 @@ de_correlate_confounder_test = args.de_correlate_confounder_test
 samples = args.samples
 pbt = args.pbt
 
-@wandb_mixin
+#@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
