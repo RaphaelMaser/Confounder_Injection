@@ -9,6 +9,7 @@
 127.0.0.1:8000:/?token=417c65a720ebe817507356246b10f9a925d3b89cbb60ed50
 '''
 import copy
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -248,16 +249,68 @@ class wandb_sync:
 
     # get runs matching a specific project, batch_date and tag
     @staticmethod
-    def get_runs(project=None, batch_date=None, tag=None):
-        assert(project!=None and batch_date!=None and tag!=None)
+    def get_runs(project=None, filters=None):
+        assert(project!=None and filters!=None)
 
-        filters = {
-            "config.batch_date": batch_date,
-            "tags": "best",
-        }
         api = wandb.Api()
         runs = list(api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="-summary_metrics.accuracy"))
         return runs
+
+    # returns the a list of the best run for every model
+    @staticmethod
+    def get_best_runs(project=None, filters=None):
+        runs = wandb_sync.get_runs(project, filters)
+        model_names = []
+
+        for r in runs:
+            model_names.append(r.config["model"])
+        model_names = list(dict.fromkeys(model_names))
+
+        best_runs = []
+        for m in model_names:
+            filters_mod = filters
+            filters_mod["config.model"] = m
+            best_runs.append(wandb_sync.get_runs(project, filters)[0])
+
+        assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
+
+        return best_runs
+
+    @staticmethod
+    def create_models_from_runs(runs):
+        model_list = []
+        for r in runs:
+            model_class = r.config["model_class"]
+
+            # conditioning is needed for init of model
+            conditioning = r.config["conditioning"]
+            if conditioning == "":
+                conditioning = None
+
+            model_fact = getattr(Models, model_class)
+            if issubclass(model_fact, Models.BrNet):
+                model = model_fact() #TODO set classes in config
+            elif issubclass(model_fact, Models.BrNet_adversarial):
+                model = model_fact(r.config["alpha"], conditioning=conditioning)
+            elif issubclass(model_fact, Models.BrNet_adversarial_double):
+                model = model_fact(r.config["alpha"], r.config["alpha2"], conditioning=conditioning)
+            else:
+                raise AssertionError("Did not find any matching model")
+
+            #print(r.)
+            model.load_state_dict(r.config["trained_model"])
+            model_list.append(model)
+        return model_list
+
+    @staticmethod
+    def save_model_parameters_best_runs(project=None, filters=None):
+        best_runs = wandb_sync.get_best_runs(project, filters)
+        model_list = wandb_sync.create_models_from_runs(best_runs)
+        for m in model_list:
+            pass
+
+
+
 
 class plot_from_wandb:
     def __init__(self, fontsize=18):
@@ -723,6 +776,7 @@ class confounder:
         torch.backends.cudnn.benchmark = True
         self.mode = mode
         self.seed = seed
+        self.random_numbers = np.random.default_rng()
 
         self.train_x = None
         self.train_y = None
@@ -862,6 +916,7 @@ class confounder:
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
             "seed": self.seed,
+            "random": self.random_numbers.integers(sys.maxsize)
         }
 
 
@@ -958,12 +1013,13 @@ class confounder:
                             },
                             path,
                         )
-                        if use_wandb and epoch == epochs:
-                            wandb.save(path)
                     # report to tune
                     tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
+            path = os.path.join(os.getcwd(),"wandb_model_state_dicts", config["random"] + ".pt")
+            torch.save(self.model.state_dict(), path)
+            wandb.save(path, policy="now")
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
