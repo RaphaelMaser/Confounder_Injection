@@ -13,6 +13,7 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas
 from sklearn.manifold import TSNE
 import seaborn as sbs
 import seaborn_image as sbsi
@@ -1039,16 +1040,36 @@ class confounder:
         test_dataloader = create_dataloader(self.test_x[0], self.test_y[0], domain_labels=self.test_domain_labels[0], confounder_labels=self.test_confounder_labels[0], batch_size=batch_size, confounder_features=self.test_confounder_features[0]).get_dataloader()
         t = train(self.model)
         classification_accuracy, confounder_accuracy = t.test(test_dataloader)
+        return classification_accuracy, confounder_accuracy
 
     def test_best_networks(self, filters):
+        t = time.time()
+
         # get best runs
         best_runs = wandb_sync.get_best_runs(project="Hyperparameters", filters=filters)
+        print(f"Best runs synced (took {time.time()-t}s)")
+        t = time.time()
 
         # get models
         model_list = wandb_sync.create_models_from_runs(best_runs)
+        print(f"Models re-created (took {time.time()-t}s)")
+        t = time.time()
 
-        # test networks and
+        # test networks and save accuracy
+        results = {"model":[], "classification_accuracy":[], "confounder_accuracy":[]}
 
+
+        for m in model_list:
+            self.model = m
+            acc = self.test(batch_size=64)
+            results["model"].append(m.get_name())
+            results["classification_accuracy"].append(acc[0])
+            results["confounder_accuracy"].append(acc[1])
+
+        print(f"All models tested (took {time.time()-t}s)\n")
+
+        results_df = pandas.DataFrame.from_dict(results)
+        return results_df
 
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
@@ -1164,4 +1185,48 @@ class confounder:
         t = time.time() - confounder.t
         print(f"Computation took {int(t/60)} min and {int(t%60)} s")
 
+
+class helper():
+    def __init__(self):
+        pass
+
+
+    @staticmethod
+    def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target):
+        params = [
+            [[1, 4], [3, 6]], # real feature
+            [[10, 12], [20, 22]] # confounder_labels
+        ]
+
+        c = confounder(seed=89182)
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_target, params=params)
+
+        filters = {
+            "summary_metrics.confounder_strength": test_confounding,
+            "config.target_domain_samples": target_domain_samples,
+            "config.target_domain_confounding": target_domain_confounding,
+            "config.de_correlate_confounder_target": de_correlate_confounder_target,
+            "config.batch_date": batch_date,
+        }
+
+        df = c.test_best_networks(filters=filters)
+        return df
+
+    @staticmethod
+    def BrNet_on_BrNet_data_all(batch_date):
+        t = time.time()
+        experiments = [
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0),
+
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1),
+        ]
+
+        df = pd.concat(experiments)
+        print(f"--- Synced and processed all experiments (took {time.time()-t}s) ---")
+        return df
 
