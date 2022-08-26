@@ -382,6 +382,10 @@ class squared_correlation(torch.nn.Module):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
+        # could happen in conditioning case
+        if len(pred) == 0:
+            return 0
+
         real = real.reshape(len(real),1)
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)

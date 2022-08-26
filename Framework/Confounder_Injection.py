@@ -289,7 +289,7 @@ class wandb_sync:
 
             model_fact = getattr(Models, model_class)
             if issubclass(model_fact, Models.BrNet):
-                model = model_fact() #TODO set classes in config
+                model = model_fact()
             elif issubclass(model_fact, Models.BrNet_adversarial):
                 model = model_fact(r.config["alpha"], conditioning=conditioning)
             elif issubclass(model_fact, Models.BrNet_adversarial_double):
@@ -297,17 +297,17 @@ class wandb_sync:
             else:
                 raise AssertionError("Did not find any matching model")
 
-            #print(r.)
-            model.load_state_dict(r.config["trained_model"])
+            random_int = r.config["random"]
+            path = os.path.join(*r.path)
+            store_path = os.path.join(os.getcwd(), "model_weights")
+            file_name = str(random_int)+".pt"
+
+            wandb.restore(file_name, run_path=path, root=store_path)
+            model_weights = torch.load(os.path.join(store_path, file_name))
+            model.load_state_dict(model_weights)
             model_list.append(model)
         return model_list
 
-    @staticmethod
-    def save_model_parameters_best_runs(project=None, filters=None):
-        best_runs = wandb_sync.get_best_runs(project, filters)
-        model_list = wandb_sync.create_models_from_runs(best_runs)
-        for m in model_list:
-            pass
 
 
 
@@ -1040,19 +1040,14 @@ class confounder:
         t = train(self.model)
         classification_accuracy, confounder_accuracy = t.test(test_dataloader)
 
-    def create_models_from_runs(self, runs):
-        for r in runs:
-            model_name = r.name
-
-        pass
-
-    def test_best_networks(self, batch_date=None):
+    def test_best_networks(self, filters):
         # get best runs
-        best_runs = wandb_sync.get_runs(project="Hyperparameters", batch_date=batch_date, tag="best")
-        best_runs_names = [b.name for b in best_runs]
-        # test the networks on test data
-        for b in best_runs:
-            model = b.config["model"]
+        best_runs = wandb_sync.get_best_runs(project="Hyperparameters", filters=filters)
+
+        # get models
+        model_list = wandb_sync.create_models_from_runs(best_runs)
+
+        # test networks and
 
 
 
