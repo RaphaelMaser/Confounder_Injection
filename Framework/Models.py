@@ -395,8 +395,8 @@ class squared_correlation(torch.nn.Module):
             return 0
 
         corr_matrix = torch.corrcoef(x)
-        #print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
+        print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         #raise Exception
         corr = - torch.square(corr_matrix[0][1])
-        #print(f"\n\n correlation is {corr}\n\n")
+        print(f"\n\n correlation is {corr}\n\n")
         return corr
