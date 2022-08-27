@@ -382,10 +382,6 @@ class squared_correlation(torch.nn.Module):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
-        # could happen in conditioning case
-        if len(pred) == 0:
-            return 0
-
         real = real.reshape(len(real),1)
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)
@@ -393,6 +389,11 @@ class squared_correlation(torch.nn.Module):
         #print(f"\n\n real is {real}\n\n")
         x = torch.stack((pred, real), dim=0)
         #print(f"\n\n x is {x}\n\n")
+
+        # could happen in conditioning case
+        if len(pred) == 0:
+            return 0
+
         corr_matrix = torch.corrcoef(x)
         #print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         #raise Exception

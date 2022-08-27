@@ -32,6 +32,7 @@ import wandb
 import datetime
 import ray
 import os
+import pickle
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -155,45 +156,49 @@ class wandb_sync:
         pass
 
     @staticmethod
-    def sync_wandb_data(project=None):
-        t = time.time()
+    def sync_wandb_data(project=None, filters=None, force_reload=False):
         assert(project is not None)
-        entity = "confounder_in_ml"
-        if project==None:
-            project = "BrNet on br_net data"
+        path = wandb_sync.get_path_from_filters(project, filters)
+        t = time.time()
+        if (not os.path.isdir(path)) or force_reload:
+            os.makedirs(path, exist_ok=True)
 
-        api = wandb.Api()
-        runs = api.runs(entity + "/" + project)
+            entity = "confounder_in_ml"
+            if project==None:
+                project = "BrNet on br_net data"
 
-        history_list, config_list, name_list = [], [], []
-        for run in runs:
-            # .summary contains the output keys/values for metrics like accuracy.
-            #  We call ._json_dict to omit large files
-            history_list.append(run.history(samples=100000))
+            api = wandb.Api()
+            runs = api.runs(entity + "/" + project, filters=filters)
 
-            # .config contains the hyperparameters.
-            #  We remove special values that start with _.
-            config_list.append(
-                {k: v for k,v in run.config.items()
-                 if not k.startswith('_')})
+            history_list, config_list, name_list = [], [], []
+            for run in runs:
+                # .summary contains the output keys/values for metrics like accuracy.
+                #  We call ._json_dict to omit large files
+                history_list.append(run.history(samples=100000))
 
-            # .name is the human-readable name of the run.
-            name_list.append(run.name)
-        history_dict = [hl.to_dict() for hl in history_list]
+                # .config contains the hyperparameters.
+                #  We remove special values that start with _.
+                config_list.append(
+                    {k: v for k,v in run.config.items()
+                     if not k.startswith('_')})
 
-        #print(history_dict)
-        #print("\n\n")
-        #print(history_dict)
-        runs_df = pd.DataFrame({
-            "history": history_dict,
-            "config": config_list,
-            "name": name_list
-        })
+                # .name is the human-readable name of the run.
+                name_list.append(run.name)
+            history_dict = [hl.to_dict() for hl in history_list]
 
-        #runs_df.to_csv(f"{project}.csv")
-        #runs_df.to_pickle(f"{project}.pkl")
-        runs_df.to_json(f"{project}.json")
+            #print(history_dict)
+            #print("\n\n")
+            #print(history_dict)
+            runs_df = pd.DataFrame({
+                "history": history_dict,
+                "config": config_list,
+                "name": name_list
+            })
+            #runs_df.to_csv(f"{project}.csv")
+            runs_df.to_pickle(f"{path}/sync.pkl")
+            runs_df.to_json(f"{path}/sync.json")
         print(f"Syncing took {time.time() - t} seconds")
+        return runs_df
 
     @staticmethod
     def convert_and_filter_df(project_csv_path, config_filter):
@@ -257,25 +262,52 @@ class wandb_sync:
         runs = list(api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="-summary_metrics.accuracy"))
         return runs
 
-    # returns the a list of the best run for every model
+    # returns a list of the best run for every model
     @staticmethod
     def get_best_runs(project=None, filters=None):
-        runs = wandb_sync.get_runs(project, filters)
-        model_names = []
+        path = wandb_sync.get_path_from_filters(project, filters)
+        if not os.path.isdir(path):
+            runs = wandb_sync.get_runs(project, filters)
+            model_names = []
 
-        for r in runs:
-            model_names.append(r.config["model"])
-        model_names = list(dict.fromkeys(model_names))
+            for r in runs:
+                model_names.append(r.config["model"])
+            model_names = list(dict.fromkeys(model_names))
+            #print(model_names)
+            best_runs = []
+            for m in model_names:
+                filters_mod = filters
+                filters_mod["config.model"] = m
+                best_runs.append(wandb_sync.get_runs(project, filters)[0])
 
-        best_runs = []
-        for m in model_names:
-            filters_mod = filters
-            filters_mod["config.model"] = m
-            best_runs.append(wandb_sync.get_runs(project, filters)[0])
+            assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
 
-        assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
+            print(f"{len(best_runs)} models found in database")
 
-        return best_runs
+            best_runs_dir = {"model":[]}
+            for run in best_runs:
+                for key in run.config:
+                    best_runs_dir[key] = []
+                for key in run.summary_metrics:
+                    best_runs_dir[key] = []
+
+            keys = best_runs_dir.keys()
+            for run in best_runs:
+                for key in keys:
+                    if key in run.config.keys():
+                        best_runs_dir[key].append(run.config[key])
+                    elif key in run.summary_metrics.keys():
+                        best_runs_dir[key].append(run.summary_metrics[key])
+                    elif key == "model":
+                        best_runs_dir["model"].append(run.name)
+                    else:
+                        best_runs_dir[key].append(None)
+            df = pd.DataFrame.from_dict(data=best_runs_dir, orient="columns")
+
+            os.makedirs(path, exist_ok=True)
+            df.to_pickle(path + "/best_result.pkl")
+        return pd.read_pickle(path + "/best_result.pkl")
+
 
     @staticmethod
     def create_models_from_runs(runs):
@@ -309,6 +341,13 @@ class wandb_sync:
             model_list.append(model)
         return model_list
 
+    @staticmethod
+    def get_path_from_filters(project, filters):
+        path = os.getcwd()
+        folder = f"wandb/{project}/"
+        for f in filters:
+            folder = folder + f"{f}={filters[f]},"
+        return os.path.join(path, folder)
 
 
 
@@ -743,7 +782,7 @@ class train:
 
         return
 
-    def condition_and_filter(sekf, y, real, pred, condition):
+    def condition_and_filter(self, y, real, pred, condition):
         #assert(real != -1)
         if condition != None:
             filtered_real = real[y == condition]
