@@ -992,6 +992,7 @@ class confounder:
                 wandb_init["date"] = "None"
             if "batch_date" not in wandb_init:
                 wandb_init["batch_date"] = "None"
+            config["pbt"] = wandb_init.get("pbt")
             config["date"] = wandb_init["date"]
             config["batch_date"] = wandb_init["batch_date"]
 
