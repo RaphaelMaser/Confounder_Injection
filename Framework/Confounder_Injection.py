@@ -700,6 +700,11 @@ class train:
 
             # Compute prediction error
             class_pred, _, _ = self.model(X)
+
+            # check if tensors are valid
+            self.check_for_nan([class_pred, y])
+
+            # compute loss
             loss = self.model.loss(class_pred, y)
 
             # Backpropagation
@@ -724,7 +729,17 @@ class train:
 
             # prediction
             class_pred, adversary_pred, _ = self.model(X)
+            #print(f"class_pred: {class_pred}")
+            #print(f"class_real: {y}")
+            #print(f"adversary_pred: {adversary_pred}")
             adversary_label, adversary_pred = self.condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
+            #print("--- filtering ---")
+            # print(f"adversary_label: {adversary_label}")
+            # print(f"adversary_pred: {adversary_pred}\n\n")
+            #raise Exception
+
+            # check if tensors are valid
+            self.check_for_nan([adversary_label, adversary_pred, class_pred, y])
 
             # compute error
             class_loss = class_loss_function(class_pred, y)
@@ -759,6 +774,9 @@ class train:
             class_pred, adversary_pred, adversary2_pred = self.model(X)
             adversary_label, adversary_pred, adversary2_label, adversary2_pred = self.condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
 
+            # check if tensors are valid
+            self.check_for_nan([adversary_label, adversary_pred, adversary2_pred, adversary2_label, class_pred, y])
+
             # compute error
             class_loss = class_loss_function(class_pred, y)
             adversary_loss = adversary_loss_function(adversary_pred, adversary_label)
@@ -770,6 +788,11 @@ class train:
             loss.backward()
             optimizer.step()
         return
+
+    def check_for_nan(self, array):
+        for tensor in array:
+            if torch.isnan(tensor).any():
+                raise Exception("nan in tensor detected")
 
     def run(self, train_dataloader, optimizer):
         if self.model.adversarial:
@@ -939,7 +962,7 @@ class confounder:
 
 
         config = {
-            "model":name,
+            "model_name":name,
             "model_class":type(self.model).__name__,
             "epochs":epochs,
             "device": device,

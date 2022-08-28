@@ -2,6 +2,7 @@ from torch import nn
 from Framework.Layers import GradientReversal
 from scipy import stats
 import torch
+import pandas as pd
 
 def reset_seed():
     torch.manual_seed(42)
@@ -139,7 +140,7 @@ class BrNet_adversarial(nn.Module):
         super(BrNet_adversarial, self).__init__()
         self.alpha = alpha
         self.alpha2 = None
-        self.adversarial = False
+        self.adversarial = True
         self.name = "BrNet_adversarial"
         self.mode = None
         self.loss = nn.CrossEntropyLoss()
@@ -382,21 +383,35 @@ class squared_correlation(torch.nn.Module):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
+        #print("--- squared_correlation ---")
+        # print(f"Real tensor: {real}")
+        # print(f"Pred tensor: {pred}")
         real = real.reshape(len(real),1)
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)
-        #print(f"\n\n pred is {pred}\n\n")
-        #print(f"\n\n real is {real}\n\n")
+        # print(f"\n\n pred is {pred}\n\n")
+        # print(f"\n\n real is {real}\n\n")
+        real, pred = self.check_correctness(real=real, pred=pred)
         x = torch.stack((pred, real), dim=0)
-        #print(f"\n\n x is {x}\n\n")
+        # print(f"\n\n x is {x}\n\n")
 
         # could happen in conditioning case
-        if len(pred) == 0:
-            return 0
-
+        # if len(pred) == 0:
+        #     return 0
         corr_matrix = torch.corrcoef(x)
-        print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
-        #raise Exception
+        # print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         corr = - torch.square(corr_matrix[0][1])
-        print(f"\n\n correlation is {corr}\n\n")
+        # print(f"\n\n correlation is {corr}\n\n")
         return corr
+
+    def check_correctness(self, real, pred):
+        # print("Real and pred:")
+        # print(real,"\n", pred)
+        if len(torch.unique(real)) == 1:
+            real = real.add(torch.rand(len(real))/1000)
+        if len(torch.unique(pred)) == 1:
+            pred = pred.add(torch.rand(len(pred))/1000)
+        # print("--- filtering --- \nReal and pred:")
+        # print(real,"\n", pred)
+        return real, pred
+

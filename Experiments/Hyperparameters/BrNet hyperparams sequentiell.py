@@ -79,13 +79,14 @@ def train_tune(config, checkpoint_dir=None):
         config["model"].alpha2 = config["alpha2"]
     if not "wandb_init" in config:
         config["wandb_init"] = None
-
+    # print("Alpha: ", config["model"].alpha)
+    # print("Alpha2: ", config["model"].alpha2)
     c = CI.confounder()
     c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
     c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
-def run_tune():
+def run_tune(search_space):
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=600*3)
     if pbt:
         scheduler = tune.schedulers.PopulationBasedTraining(
@@ -106,7 +107,7 @@ def run_tune():
         scheduler = None
 
     model_name = search_space["model"].get_name()
-    tune.run(train_tune,num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
+    tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              max_concurrent_trials=max_concurrent_trials,
              local_dir="/mnt/lscratch/users/rmaser/ray_results"
@@ -116,77 +117,77 @@ def run_tune():
 def BrNet_hyperparams():
     search_space["model"] = Models.BrNet()
     search_space["wandb_init"]["group"] = "BrNet"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_labels_entropy_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_entropy(alpha=None)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_entropy"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_labels_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_entropy(alpha=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_entropy_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_labels_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_corr(alpha=None)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_corr"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_labels_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_labels_corr(alpha=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_labels_corr_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_features_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_features_corr(alpha=None)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_features_corr"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_features_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_features_corr(alpha=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_features_corr_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_DANN_entropy_hyperparams():
     search_space["model"] = Models.BrNet_DANN_entropy(alpha=None)
     search_space["wandb_init"]["group"] = "BrNet_DANN_entropy"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_DANN_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_DANN_entropy(alpha=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_DANN_entropy_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_DANN_corr_hyperparams():
     search_space["model"] = Models.BrNet_DANN_corr(alpha=None)
     search_space["wandb_init"]["group"] = "BrNet_DANN_corr"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_DANN_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_DANN_corr(alpha=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_DANN_corr_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_DANN_labels_entropy_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy(alpha=None, alpha2=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr"
-    run_tune()
+    run_tune(search_space)
 
 def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     search_space["model"] = Models.BrNet_CF_free_DANN_labels_entropy_features_corr(alpha=None, alpha2=None, conditioning=0)
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned"
-    run_tune()
+    run_tune(search_space)
 
 os.environ['WANDB_MODE'] = 'run'
 #os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
