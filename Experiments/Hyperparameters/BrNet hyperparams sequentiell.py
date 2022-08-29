@@ -114,8 +114,8 @@ def run_tune(search_space):
              local_dir=local_dir
     )
     # remove ray_results folder
-    time.sleep(20)
-    shutil.rmtree(local_dir, ignore_errors=True)
+    #time.sleep(20)
+    #shutil.rmtree(local_dir, ignore_errors=True)
 
 
 
