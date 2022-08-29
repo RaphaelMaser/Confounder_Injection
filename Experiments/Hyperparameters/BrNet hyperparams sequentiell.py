@@ -14,6 +14,7 @@ import datetime
 import argparse
 import os
 import time
+import shutil
 
 params = [
     [[1, 4], [3, 6]], # real feature
@@ -106,12 +107,16 @@ def run_tune(search_space):
     else:
         scheduler = None
 
-    model_name = search_space["model"].get_name()
+    local_dir = "/mnt/lscratch/users/rmaser/ray_results"
     tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              max_concurrent_trials=max_concurrent_trials,
-             local_dir="/mnt/lscratch/users/rmaser/ray_results"
+             local_dir=local_dir
     )
+    # remove ray_results folder
+    time.sleep(20)
+    shutil.rmtree(local_dir, ignore_errors=True)
+
 
 
 def BrNet_hyperparams():
@@ -209,6 +214,7 @@ BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-# for i in range(0,20):
-#     print(f"Waited for {i} minutes")
-#     time.sleep(60)
+for i in range(0,20):
+    print(f"Waited for {i} minutes")
+    time.sleep(60)
+
