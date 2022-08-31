@@ -151,6 +151,10 @@ class plot:
         sbs.lineplot(x)
         return
 
+    def filter_df(self, df, filter):
+        for f in filter:
+            df = df[df[f]]
+
 class wandb_sync:
     def __init__(self):
         pass
@@ -259,7 +263,7 @@ class wandb_sync:
         assert(project!=None and filters!=None)
 
         api = wandb.Api()
-        runs = (api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="summary_metrics.classification_accuracy"))
+        runs = (api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="-summary_metrics.classification_accuracy"))
         return runs
 
     # returns a list of the best run for every model
@@ -279,6 +283,7 @@ class wandb_sync:
                 assert(r.name == r.config["model_name"])
             run_names = list(dict.fromkeys(run_names))
             #print(run_names)
+
             best_runs = []
             for m in run_names:
                 filters_mod = {"config.model_name": m}
@@ -1308,7 +1313,7 @@ class helper():
 
     @staticmethod
     def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target, force_reload=False, seed=None, load_complete_model=True, experiment=0):
-        print(f"Testing networks:"
+        print(f"Experiment {experiment}:"
               f"\n-- batch_date={batch_date}"
               f"\n-- test_confounding={test_confounding}"
               f"\n-- target_domain_samples={target_domain_samples}"
@@ -1339,16 +1344,16 @@ class helper():
         t = time.time()
         experiments = [
             helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=1),
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=3),
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
+            #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
+            #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
 
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=5),
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=6),
-            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=7),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=3),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
+            helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=5),
         ]
 
         df = pd.concat(experiments)
         print(f"--- Synced and processed all experiments (took {time.time()-t}s) ---")
-        return df
+        return df.reset_index(drop=True)
 

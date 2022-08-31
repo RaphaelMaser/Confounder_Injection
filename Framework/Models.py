@@ -405,6 +405,8 @@ class squared_correlation(torch.nn.Module):
         return corr
 
     def check_correctness(self, real, pred):
+        if len(real) == 0:
+            return real, pred
         # print("Real and pred:")
         # print(real,"\n", pred)
         if len(torch.unique(real)) == 1:
