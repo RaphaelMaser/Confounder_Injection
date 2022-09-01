@@ -64,6 +64,7 @@ args = parser.parse_args()
 search_space["wandb_init"]["batch_date"] = args.date
 search_space["wandb_init"]["pbt"] = args.pbt
 search_space["epochs"] = args.epochs
+search_space["wandb_init"]["finetuning"] = args.finetuning
 test_confounding = args.test_confounding
 target_domain_samples = args.target_domain_samples
 target_domain_confounding = args.target_domain_confounding
