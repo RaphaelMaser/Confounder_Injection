@@ -1074,6 +1074,11 @@ class confounder:
             else:
                 device="cpu"
 
+        if len(self.train_y[0]) < hyper_params["batch_size"]:
+            hyper_params["batch_size"] = len(self.train_y[0])
+            if wandb_init.get("finetuning") != 1:
+                raise Exception("Batch_size had to be reset although finetuning is off. Choose a correct batch_size")
+
 
         config = {
             "model_name":name,
