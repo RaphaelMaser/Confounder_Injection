@@ -54,6 +54,7 @@ parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
 parser.add_argument('-pbt', action="store", type=int, dest="pbt", help="Define the scheduler")
 parser.add_argument('-epochs', action="store", type=int, dest="epochs", help="Define the scheduler")
 parser.add_argument('-samples', action="store", type=int, dest="samples", help="Define the scheduler")
+parser.add_argument('-finetuning', action="store", type=int, dest="finetuning", help="Enable finetuning?")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
 parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
@@ -71,6 +72,8 @@ de_correlate_confounder_test = args.de_correlate_confounder_test
 samples = args.samples
 pbt = args.pbt
 epochs = args.epochs
+#TODO just for testing
+finetuning = args.finetuning
 
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
@@ -82,9 +85,22 @@ def train_tune(config, checkpoint_dir=None):
         config["wandb_init"] = None
     # print("Alpha: ", config["model"].alpha)
     # print("Alpha2: ", config["model"].alpha2)
-    c = CI.confounder()
-    c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
-    c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+
+    # pre-train model on the confounded dataset and then finetune it on the small dataset
+    if finetuning:
+        c_ft = CI.confounder()
+        c_ft.generate_data(mode="br_net", samples=512, target_domain_samples=0, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c_ft.train(use_tune=False, use_wandb=False, epochs=int(config["epochs"]/2), model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+
+        c = CI.confounder()
+        c.generate_data(mode="br_net", samples=0, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.train(use_tune=True, use_wandb=True, epochs=int(config["epochs"]/2), model = c_ft.model, optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+
+    # standard routine
+    else:
+        c = CI.confounder()
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
 
 def run_tune(search_space):

@@ -155,6 +155,62 @@ class plot:
         for f in filter:
             df = df[df[f]]
 
+    @staticmethod
+    def filter(df, reverse=False):
+        if not reverse:
+            df = df[(df["model"]=="BrNet_DANN_entropy")|(df["model"]=="BrNet")|(df["model"]=="BrNet_DANN_corr")|(df["model"]=="BrNet_CF_free_features_corr_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy")|(df["model"]=="BrNet_DANN_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_features_corr")|(df["model"]=="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0.0")]
+        else:
+            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0.0")]
+        return df
+
+    @staticmethod
+    def plot_heatmap(table, de_correlate_confounder_target, target_domain_samples, ax=None):
+        if de_correlate_confounder_target:
+            index = 1
+        else:
+            index = 0
+        df = table
+        df = df[df["config.de_correlate_confounder_target"] == de_correlate_confounder_target]
+        df = df[df["config.target_domain_samples"] == target_domain_samples]
+        df = df.pivot_table(index="model", columns="summary_metrics.confounder_strength", values="classification_accuracy")
+        df = df.reindex(df[index].sort_values(ascending=False).index)
+        if ax==None:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=1)
+        else:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=1, ax=ax)
+
+    @staticmethod
+    def plot_heatmap_with_mean(df, ax=None):
+        df_mean = df.groupby("model")["classification_accuracy"].mean()
+        df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
+        df = df.pivot_table(index="model", columns="experiment", values="classification_accuracy")
+        df = pd.concat([df, df_mean], axis=1)
+        df = df.reindex(df.sort_values(by="mean", ascending=False).index)
+        if ax==None:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None)
+        else:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None, ax=ax)
+
+    @staticmethod
+    def split_and_plot_heatmaps_with_mean(df):
+        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
+        df1 = plot.filter(df)
+        plot.plot_heatmap_with_mean(df1, ax[0])
+
+        df2 = plot.filter(df, reverse=True)
+        plot.plot_heatmap_with_mean(df2, ax[1])
+
+    @staticmethod
+    def split_and_plot_heatmaps(df, de_correlate_confounder_target, target_domain_samples):
+        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
+        df1 = plot.filter(df)
+        plot.plot_heatmap(df1, de_correlate_confounder_target, target_domain_samples, ax[0])
+
+        df2 = plot.filter(df, reverse=True)
+        plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
+
+
+
 class wandb_sync:
     def __init__(self):
         pass
@@ -1062,7 +1118,7 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="thread"))
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
             config = wandb.config
 
         if wandb_sweep:
