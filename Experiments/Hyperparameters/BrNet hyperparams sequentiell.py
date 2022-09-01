@@ -76,6 +76,9 @@ epochs = args.epochs
 #TODO just for testing
 finetuning = args.finetuning
 
+if finetuning==1:
+    search_space["batch_size"] = target_domain_samples
+
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
     if "alpha" in config:
