@@ -984,7 +984,7 @@ class confounder:
         torch.manual_seed(self.seed)
 
     def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
-        if samples >= 0:
+        if samples > 0:
             test_samples = samples
         else:
             test_samples = 512
