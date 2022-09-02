@@ -81,6 +81,7 @@ finetuning = args.finetuning
 
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
+    print(f"--- RESSOURCES ---\n{ray.cluster_resources()}")
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
     if "alpha2" in config:
