@@ -635,8 +635,8 @@ class generator:
             if index != n_groups:
                 #print("Index is ",index)
                 cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
-            else:
-                cf[i] = np.nan
+            #else:
+                #cf[i] = np.nan TODO
 
         # derive mf from class-label
         for g in range(n_groups):
@@ -650,14 +650,19 @@ class generator:
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
             # check if confounder_labels feature should be added
-            if not np.isnan(cf[i]):
-                x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
-                x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+            #if not np.isnan(cf[i]): TODO
+            x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+            x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
 
             # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
-        self.confounder_features = cf
+        # if there is no confounder in the image then we need to create some arbitrary values
+        # otherwise our model gets a tensor with nan as input
+        if np.isnan(cf).any():
+            self.confounder_features = np.full((N*n_groups), 0)
+        else:
+            self.confounder_features = cf
 
         # if self.conditioning != -1:
         #     self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
@@ -832,6 +837,10 @@ class train:
             y = label["y"].to(self.device)
             adversary_label = label[adversarial_mode].to(self.device)
 
+            # print(f"--- train_adversarial ---\n"
+            #       f"y:{y}\n"
+            #       f"adversary_label:{adversary_label}")
+
             # prediction
             class_pred, adversary_pred, _ = self.model(X)
             #print(f"class_pred: {class_pred}")
@@ -897,7 +906,9 @@ class train:
     def check_for_nan(self, array):
         for tensor in array:
             if torch.isnan(tensor).any():
-                raise Exception("nan in tensor detected")
+                print("Array with NAN values:")
+                print(array)
+                raise Exception("nan in input data detected")
 
     def run(self, train_dataloader, optimizer):
         if self.model.adversarial:
@@ -983,12 +994,7 @@ class confounder:
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
-    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
-        if samples > 0:
-            test_samples = samples
-        else:
-            test_samples = 512
-
+    def generate_data(self, mode=None, overlap=0, samples=512, test_samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
         self.reset_seed()
 
         iterations = len(test_confounding)
@@ -1058,6 +1064,11 @@ class confounder:
             if self.debug:
                 print("--- generate_data ---")
                 #print("Generated Data of dimension ", self.train_x.shape)
+            # print(f"--- Data generation ---\n"
+            #       f"y:{self.train_y}\n"
+            #       f"confounder_labels:{self.train_confounder_labels}\n"
+            #       f"confounder_features:{self.train_confounder_features}\n"
+            #       f"domain_labels:{self.train_domain_labels}")
         return self.train_x, self.train_y, self.test_x, self.test_y
 
     def inject_confounder(self, type=None):
@@ -1074,7 +1085,14 @@ class confounder:
             else:
                 device="cpu"
 
+        # batch_size_temp =hyper_params["batch_size"]
+        # print(f"\n--- Debugging ---\n"
+        #       f"Model={self.model.get_name()}\n"
+        #       f"Train_length={len(self.train_y[0])}\n"
+        #       f"Batch_size={batch_size_temp}")
+
         if len(self.train_y[0]) < hyper_params["batch_size"]:
+            # print(f"Batch_size was too high with length of array={len(self.train_y[0])} and batch_size={batch_size_temp}\n")
             hyper_params["batch_size"] = len(self.train_y[0])
             if wandb_init.get("finetuning") != 1:
                 raise Exception("Batch_size had to be reset although finetuning is off. Choose a correct batch_size")
@@ -1133,6 +1151,7 @@ class confounder:
 
         if use_wandb:
             wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
+            time.sleep(5)
             config = wandb.config
 
         if wandb_sweep:
@@ -1155,6 +1174,7 @@ class confounder:
 
         model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
         train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
+
         test_dataloader = []
         for cf_var in range(0,len(self.index)):
             test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
@@ -1361,7 +1381,7 @@ class confounder:
         x.requires_grad = True
 
         # predict labels
-        class_pred, domain_pred = self.model(x)
+        class_pred, domain_pred, _ = self.model(x)
 
         # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
         # argmax returns vector with index of the maximum value (zero for class zero, one for class one)

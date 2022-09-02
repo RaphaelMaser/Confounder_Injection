@@ -24,7 +24,7 @@ params = [
 e = datetime.datetime.now()
 #epochs = 1000
 #cpus_per_trial = 128
-max_concurrent_trials = 64
+max_concurrent_trials = 1
 ray.init(num_cpus=128)
 
 search_space = {
@@ -76,8 +76,8 @@ epochs = args.epochs
 #TODO just for testing
 finetuning = args.finetuning
 
-if finetuning==1:
-    search_space["batch_size"] = target_domain_samples
+# if finetuning==1:
+#     search_space["batch_size"] = target_domain_samples
 
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
@@ -234,7 +234,7 @@ BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-for i in range(0,20):
+for i in range(0,5):
     print(f"Waited for {i} minutes")
     time.sleep(60)
 
