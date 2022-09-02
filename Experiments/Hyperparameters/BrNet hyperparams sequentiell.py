@@ -23,10 +23,13 @@ params = [
 
 e = datetime.datetime.now()
 #epochs = 1000
-cpus_per_trial = 32
+cpus_per_trial = 4
 #max_concurrent_trials = 32
 #ray.init(num_cpus=128)
 ray.init()
+local_dir = "/mnt/lscratch/users/rmaser/ray_results"
+#local_dir= os.path.join(os.getcwd(), "ray_results")
+#local_dir = None
 
 search_space = {
     #"epochs":epochs,
@@ -46,6 +49,7 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
+        "dir": None,
     },
 }
 
@@ -129,7 +133,6 @@ def run_tune(search_space):
     else:
         scheduler = None
 
-    local_dir = "/mnt/lscratch/users/rmaser/ray_results"
     tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              #max_concurrent_trials=max_concurrent_trials,
@@ -216,7 +219,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned"
     run_tune(search_space)
 
-os.environ['WANDB_MODE'] = 'run'
+#os.environ['WANDB_MODE'] = 'dryrun'
 #os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
 # run experiments

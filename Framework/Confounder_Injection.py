@@ -1078,6 +1078,7 @@ class confounder:
         self.reset_seed()
         name = model.get_name()
         self.model = copy.deepcopy(model)
+        mode = "offline"
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -1150,7 +1151,7 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"), mode=mode, dir=wandb_init["dir"])
             time.sleep(5)
             config = wandb.config
 
@@ -1234,6 +1235,11 @@ class confounder:
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
+
+            if mode == "offline":
+                os.system("conda run -n confounder_3.10 wandb sync --sync-all")
+
+
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
         #confounder_labels.all_results.append(self.results)
