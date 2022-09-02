@@ -28,7 +28,7 @@ cpus_per_trial = 4
 #ray.init(num_cpus=128)
 ray.init()
 local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-local_dir= os.path.join(os.getcwd(), "ray_results")
+#local_dir= os.path.join(os.getcwd(), "ray_results")
 #local_dir = None
 
 search_space = {
