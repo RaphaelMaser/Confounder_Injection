@@ -1237,6 +1237,10 @@ class confounder:
             wandb.finish()
 
             if mode == "offline":
+                time.sleep(10)
+                print(f"--- syncing ---\n"
+                      f"current_dir={os.getcwd()}\n"
+                      f"files={os.listdir(os.getcwd())}")
                 os.system("conda run -n confounder_3.10 wandb sync --sync-all")
 
 
