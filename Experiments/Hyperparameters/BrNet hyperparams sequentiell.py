@@ -25,7 +25,8 @@ e = datetime.datetime.now()
 #epochs = 1000
 cpus_per_trial = 32
 #max_concurrent_trials = 32
-ray.init(num_cpus=128)
+#ray.init(num_cpus=128)
+ray.init()
 
 search_space = {
     #"epochs":epochs,
