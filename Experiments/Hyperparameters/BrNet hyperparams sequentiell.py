@@ -23,8 +23,8 @@ params = [
 
 e = datetime.datetime.now()
 #epochs = 1000
-cpus_per_trial = 4
-max_concurrent_trials = 32
+cpus_per_trial = 32
+#max_concurrent_trials = 32
 ray.init(num_cpus=128)
 
 search_space = {
@@ -81,7 +81,7 @@ finetuning = args.finetuning
 
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
-    print(f"--- RESSOURCES ---\n{ray.cluster_resources()}")
+    #print(f"--- RESSOURCES ---\n{ray.cluster_resources()}")
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
     if "alpha2" in config:
@@ -131,7 +131,7 @@ def run_tune(search_space):
     local_dir = "/mnt/lscratch/users/rmaser/ray_results"
     tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
-             max_concurrent_trials=max_concurrent_trials,
+             #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir
     )
     # remove ray_results folder
