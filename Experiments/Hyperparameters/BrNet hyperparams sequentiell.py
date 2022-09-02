@@ -24,7 +24,7 @@ params = [
 e = datetime.datetime.now()
 #epochs = 1000
 #cpus_per_trial = 128
-max_concurrent_trials = 1
+max_concurrent_trials = 128
 ray.init(num_cpus=128)
 
 search_space = {
@@ -130,7 +130,7 @@ def run_tune(search_space):
     local_dir = "/mnt/lscratch/users/rmaser/ray_results"
     tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              #resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
-             max_concurrent_trials=max_concurrent_trials,
+             #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir
     )
     # remove ray_results folder
