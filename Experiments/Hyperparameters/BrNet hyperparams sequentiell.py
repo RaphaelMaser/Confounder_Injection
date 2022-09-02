@@ -138,6 +138,7 @@ def run_tune(search_space):
              #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir
     )
+    os.system("cd {localdir} && conda run -n confounder_3.10 wandb sync --sync-all")
     # remove ray_results folder
     #time.sleep(20)
     #shutil.rmtree(local_dir, ignore_errors=True)
