@@ -49,7 +49,7 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
-        "dir": None,
+        "dir": local_dir,
     },
 }
 
