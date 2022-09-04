@@ -1253,7 +1253,7 @@ class confounder:
                 print(f"--- syncing ---\n"
                       f"current_dir={os.getcwd()}\n"
                       f"files={os.listdir(os.getcwd())}")
-                os.system("conda run -n confounder_3.10 wandb sync --sync-all")
+                os.system(f"conda run -n confounder_3.10 wandb sync \"{os.getcwd()}\" --sync-all")
 
 
         self.results = pd.DataFrame(results)
