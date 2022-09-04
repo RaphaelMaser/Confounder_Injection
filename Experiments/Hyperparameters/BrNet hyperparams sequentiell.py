@@ -28,7 +28,7 @@ cpus_per_trial = 4
 #ray.init(num_cpus=128)
 ray.init()
 local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-#local_dir= os.path.join(os.getcwd(), "ray_results")
+local_dir= os.path.join(os.getcwd(), "ray_results")
 #local_dir = None
 
 search_space = {
@@ -49,7 +49,7 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
-        "dir": local_dir,
+        "dir": None,#local_dir,
     },
 }
 
@@ -138,7 +138,7 @@ def run_tune(search_space):
              #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir
     )
-    os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
+    #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
     # remove ray_results folder
     #time.sleep(20)
     #shutil.rmtree(local_dir, ignore_errors=True)

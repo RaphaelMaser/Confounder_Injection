@@ -160,7 +160,7 @@ class plot:
         if not reverse:
             df = df[(df["model"]=="BrNet_DANN_entropy")|(df["model"]=="BrNet")|(df["model"]=="BrNet_DANN_corr")|(df["model"]=="BrNet_CF_free_features_corr_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy")|(df["model"]=="BrNet_DANN_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_features_corr")|(df["model"]=="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0.0")]
         else:
-            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0.0")]
+            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0.0")]
         return df
 
     @staticmethod
@@ -180,6 +180,15 @@ class plot:
             sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=1, ax=ax)
 
     @staticmethod
+    def split_and_plot_heatmaps(df, de_correlate_confounder_target, target_domain_samples):
+        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
+        df1 = plot.filter(df)
+        plot.plot_heatmap(df1, de_correlate_confounder_target, target_domain_samples, ax[0])
+
+        df2 = plot.filter(df, reverse=True)
+        plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
+
+    @staticmethod
     def plot_heatmap_with_mean(df, ax=None):
         df_mean = df.groupby("model")["classification_accuracy"].mean()
         df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
@@ -193,21 +202,13 @@ class plot:
 
     @staticmethod
     def split_and_plot_heatmaps_with_mean(df):
-        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
+        fig,ax = plt.subplots(2,1, figsize=(14,8), constrained_layout=True)
         df1 = plot.filter(df)
         plot.plot_heatmap_with_mean(df1, ax[0])
 
         df2 = plot.filter(df, reverse=True)
         plot.plot_heatmap_with_mean(df2, ax[1])
 
-    @staticmethod
-    def split_and_plot_heatmaps(df, de_correlate_confounder_target, target_domain_samples):
-        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
-        df1 = plot.filter(df)
-        plot.plot_heatmap(df1, de_correlate_confounder_target, target_domain_samples, ax[0])
-
-        df2 = plot.filter(df, reverse=True)
-        plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
 
 
 
@@ -325,6 +326,7 @@ class wandb_sync:
     # returns a list of the best run for every model
     @staticmethod
     def get_best_runs(project=None, filters=None, force_reload=False):
+        print("Searching for best runs ...",end=" ")
         t = time.time()
         path = wandb_sync.get_path_from_filters(project, filters)
         file_path = path + "/best_result.pkl"
@@ -350,7 +352,7 @@ class wandb_sync:
 
             assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
 
-            print(f"{len(best_runs)} models found in database")
+            print(f"{len(best_runs)} models found in database ...", end=" ")
 
             best_runs_dir = {"name": [], "run_path":[]}
             for run in best_runs:
@@ -384,12 +386,13 @@ class wandb_sync:
             df = pd.read_pickle(path + "/best_result.pkl")
         except:
             raise Exception("get_best_runs: Error in reading file")
-        print(f"Best runs synced (took {time.time()-t}s)")
+        print(f"done ({round(time.time()-t, 3)}s)")
         return df
 
 
     @staticmethod
     def create_models_from_runs(project, filters, force_reload=False, load_complete_model=True):
+        print("Re-creating models ...", end=" ")
         t = time.time()
         path = wandb_sync.get_path_from_filters(project, filters)
 
@@ -443,7 +446,7 @@ class wandb_sync:
                 torch.save(model, file_path_model)
             model.random = random_int
             model_list.append(model)
-        print(f"Models re-created (took {time.time()-t}s)")
+        print(f"done ({round(time.time()-t, 3)}s)")
         return model_list
 
     @staticmethod
@@ -1086,6 +1089,9 @@ class confounder:
             else:
                 device="cpu"
 
+        # if wandb_init["dir"] == None:
+        #     wandb_init["dir"] = os.getcwd()
+        #
         # batch_size_temp =hyper_params["batch_size"]
         # print(f"\n--- Debugging ---\n"
         #       f"Model={self.model.get_name()}\n"
@@ -1242,7 +1248,7 @@ class confounder:
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
 
-            if mode == "offline":
+            if mode == "offline" and wandb_init["dir"] == None:
                 time.sleep(10)
                 print(f"--- syncing ---\n"
                       f"current_dir={os.getcwd()}\n"
@@ -1292,7 +1298,7 @@ class confounder:
                 results[k].append(filters[k])
             results["random"].append(self.model.random)
 
-        print(f"Runs synced, models re-created and tested (took {time.time()-t}s)\n")
+        print(f"Runs synced, models re-created and tested (took {round(time.time()-t, 3)}s)\n")
 
         results_df = pandas.DataFrame.from_dict(results)
         return results_df
@@ -1454,29 +1460,29 @@ class helper():
         t = time.time()
         if legacy:
             experiments = [
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=1),
-                #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no confounder\n0/512"),#1),
+                #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no-confounder\n16/512"),#2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no confounder\n16/512"),#2),
                 #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
 
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=3),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=5),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n0/512"),#3),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n16/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n64/512"),#5),
             ]
         else:
             experiments = [
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=1),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=2),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=3),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no-confounder\n0/512"),#1),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no-confounder\n16/512"),#2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no-confounder\n16/512\nfinetuning"),#),
 
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=5),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=6),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=7),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=8),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n0/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n16/512"),#5),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n16/512\nfinetuning"),#6),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n64/512"),#7),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="de-correlated\n64/512\nfinetuning"),#8),
             ]
 
         df = pd.concat(experiments)
-        print(f"--- Synced and processed all experiments (took {time.time()-t}s) ---")
+        print(f"--- Synced and processed all experiments (took {round(time.time()-t, 3)}s) ---")
         return df.reset_index(drop=True)
 
