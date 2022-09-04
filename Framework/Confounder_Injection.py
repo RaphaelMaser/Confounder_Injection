@@ -1082,6 +1082,7 @@ class confounder:
         name = model.get_name()
         self.model = copy.deepcopy(model)
         mode = "offline"
+        working_directory = os.getcwd()
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -1251,9 +1252,9 @@ class confounder:
             if mode == "offline" and wandb_init["dir"] == None:
                 time.sleep(10)
                 print(f"--- syncing ---\n"
-                      f"current_dir={os.getcwd()}\n"
-                      f"files={os.listdir(os.getcwd())}")
-                os.system(f"conda run -n confounder_3.10 wandb sync \"{os.getcwd()}\" --sync-all")
+                      f"current_dir={working_directory}\n"
+                      f"files={working_directory}")
+                os.system(f"conda run -n confounder_3.10 wandb sync \"{working_directory}\" --sync-all")
 
 
         self.results = pd.DataFrame(results)
