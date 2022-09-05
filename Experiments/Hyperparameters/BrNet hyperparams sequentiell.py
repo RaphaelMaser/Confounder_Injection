@@ -49,7 +49,7 @@ search_space = {
         "project": "Hyperparameters",
         "group": "BrNet",
         "date": [f"{e.year}.{e.month}.{e.day} {e.hour}:{e.minute}:{e.second}"],
-        "dir": None,#local_dir,
+        "dir": local_dir,
     },
 }
 
@@ -239,6 +239,8 @@ BrNet_CF_free_DANN_labels_entropy_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams()
 BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
+
+os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
 
 for i in range(0,5):
     print(f"Waited for {i} minutes")
