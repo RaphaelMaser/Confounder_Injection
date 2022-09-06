@@ -180,7 +180,7 @@ class BrNet_adversarial(nn.Module):
 
     def get_name(self):
         if self.conditioning != None:
-            return self.name + f"_conditioned_{self.conditioning}"
+            return self.name + f"_conditioned_{int(self.conditioning)}"
         return self.name
 
 class BrNet_CF_free_labels_entropy(BrNet_adversarial):
@@ -282,7 +282,7 @@ class BrNet_adversarial_double(nn.Module):
 
     def get_name(self):
         if self.conditioning != None:
-            return self.name + f"_conditioned_{self.conditioning}"
+            return self.name + f"_conditioned_{int(self.conditioning)}"
         return self.name
 
 class BrNet_CF_free_DANN_labels_entropy(BrNet_adversarial_double):

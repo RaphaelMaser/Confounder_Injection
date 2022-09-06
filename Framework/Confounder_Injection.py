@@ -156,11 +156,14 @@ class plot:
             df = df[df[f]]
 
     @staticmethod
-    def filter(df, reverse=False):
+    def filter(df, reverse=False, filter_unrealistic=False):
+        if filter_unrealistic:
+            df = df[(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_DANN_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0")]
+
         if not reverse:
-            df = df[(df["model"]=="BrNet_DANN_entropy")|(df["model"]=="BrNet")|(df["model"]=="BrNet_DANN_corr")|(df["model"]=="BrNet_CF_free_features_corr_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_labels_entropy")|(df["model"]=="BrNet_DANN_entropy_conditioned_0.0")|(df["model"]=="BrNet_CF_free_features_corr")|(df["model"]=="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0.0")]
+            df = df[(df["model"]=="BrNet_DANN_entropy")|(df["model"]=="BrNet")|(df["model"]=="BrNet_DANN_corr")|(df["model"]=="BrNet_DANN_corr_conditioned_0")|(df["model"]=="BrNet_CF_free_features_corr_conditioned_0")|(df["model"]=="BrNet_CF_free_labels_entropy_conditioned_0")|(df["model"]=="BrNet_CF_free_labels_entropy")|(df["model"]=="BrNet_DANN_entropy_conditioned_0")|(df["model"]=="BrNet_CF_free_features_corr")|(df["model"]=="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0")]
         else:
-            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0.0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0.0")]
+            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_DANN_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0")]
         return df
 
     @staticmethod
@@ -182,7 +185,7 @@ class plot:
     @staticmethod
     def split_and_plot_heatmaps(df, de_correlate_confounder_target, target_domain_samples):
         fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
-        df1 = plot.filter(df)
+        df1 = plot.filter(df, filter_unrealistic=True)
         plot.plot_heatmap(df1, de_correlate_confounder_target, target_domain_samples, ax[0])
 
         df2 = plot.filter(df, reverse=True)
@@ -203,7 +206,7 @@ class plot:
     @staticmethod
     def split_and_plot_heatmaps_with_mean(df):
         fig,ax = plt.subplots(2,1, figsize=(14,8), constrained_layout=True)
-        df1 = plot.filter(df)
+        df1 = plot.filter(df, filter_unrealistic=True)
         plot.plot_heatmap_with_mean(df1, ax[0])
 
         df2 = plot.filter(df, reverse=True)
