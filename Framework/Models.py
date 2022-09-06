@@ -187,7 +187,7 @@ class BrNet_CF_free_labels_entropy(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         reset_seed()
         super().__init__(alpha, n_classes, n_classes+1, conditioning)
-        self.name = "BrNet_CF_free_labels_entropy"
+        self.name = "BrNet_CF-net_labels_entropy"
         self.mode = "confounder_labels"
         self.adversarial = True
 
@@ -195,7 +195,7 @@ class BrNet_CF_free_labels_corr(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         reset_seed()
         super().__init__(alpha, n_classes, 1, conditioning)
-        self.name = "BrNet_CF_free_labels_corr"
+        self.name = "BrNet_CF-net_labels_corr"
         self.mode = "confounder_labels"
         self.adversarial = True
         self.adv_loss = squared_correlation()
@@ -205,7 +205,7 @@ class BrNet_CF_free_features_corr(BrNet_adversarial):
     def __init__(self, alpha, n_classes=2, conditioning=None):
         reset_seed()
         super().__init__(alpha, n_classes, 1, conditioning)
-        self.name = "BrNet_CF_free_features_corr"
+        self.name = "BrNet_CF-net_features_corr"
         self.mode = "confounder_features"
         self.adversarial = True
         self.adv_loss = squared_correlation()
@@ -289,7 +289,7 @@ class BrNet_CF_free_DANN_labels_entropy(BrNet_adversarial_double):
     def __init__(self, alpha, alpha2, n_classes=2, conditioning=None):
         reset_seed()
         super().__init__(alpha, alpha2, n_classes, 2, n_classes+1, conditioning)
-        self.name = "BrNet_CF_free_DANN_labels_entropy"
+        self.name = "BrNet_CF-net_DANN_labels_entropy"
         self.mode = "domain_labels"
         self.mode2 = "confounder_labels"
         self.adversarial = True
@@ -299,7 +299,7 @@ class BrNet_CF_free_DANN_labels_entropy_features_corr(BrNet_adversarial_double):
     reset_seed()
     def __init__(self, alpha, alpha2, n_classes=2, conditioning=None):
         super().__init__(alpha, alpha2, n_classes, 2, 1, conditioning)
-        self.name = "BrNet_CF_free_DANN_labels_entropy_features_corr"
+        self.name = "BrNet_CF-net_DANN_labels_entropy_features_corr"
         self.mode = "domain_labels"
         self.mode2 = "confounder_features"
         self.adversarial = True
