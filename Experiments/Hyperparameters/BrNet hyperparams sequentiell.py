@@ -244,8 +244,9 @@ BrNet_DANN_entropy_conditioned_hyperparams()
 # BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams()
 # BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
 
-for i in range(0,5):
-    print(f"Waited for {i} minutes")
-    time.sleep(60)
+# for i in range(0,5):
+#     print(f"Waited for {i} minutes")
+#     time.sleep(60)
 
-os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
+#os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
+print("--- finished ---")
