@@ -383,14 +383,17 @@ class squared_correlation(torch.nn.Module):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
-        #print("--- squared_correlation ---")
+        print("--- squared_correlation ---")
         # print(f"Real tensor: {real}")
         # print(f"Pred tensor: {pred}")
+
         real = real.reshape(len(real),1)
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)
-        # print(f"\n\n pred is {pred}\n\n")
-        # print(f"\n\n real is {real}\n\n")
+
+        print(f"\n\n pred is {pred}\n\n")
+        print(f"\n\n real is {real}\n\n")
+
         real, pred = self.check_correctness(real=real, pred=pred)
         x = torch.stack((pred, real), dim=0)
         # print(f"\n\n x is {x}\n\n")
