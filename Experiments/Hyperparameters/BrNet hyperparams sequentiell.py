@@ -227,10 +227,11 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
 #os.environ['WANDB_MODE'] = 'dryrun'
 #os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
-# run experiments
+# run experiments /TODO un-comment
 # BrNet_hyperparams()
 # BrNet_CF_free_labels_entropy_hyperparams()
 # BrNet_CF_free_labels_entropy_conditioned_hyperparams()
+
 BrNet_CF_free_features_corr_hyperparams()
 BrNet_CF_free_features_corr_conditioned_hyperparams()
 BrNet_DANN_entropy_hyperparams()

@@ -383,7 +383,7 @@ class squared_correlation(torch.nn.Module):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
-        print("--- squared_correlation ---")
+        # print("--- squared_correlation ---")
         # print(f"Real tensor: {real}")
         # print(f"Pred tensor: {pred}")
 
@@ -391,8 +391,8 @@ class squared_correlation(torch.nn.Module):
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)
 
-        print(f"\n\n pred is {pred}\n\n")
-        print(f"\n\n real is {real}\n\n")
+        # print(f"\n\n pred is {pred}\n\n")
+        # print(f"\n\n real is {real}\n\n")
 
         real, pred = self.check_correctness(real=real, pred=pred)
         x = torch.stack((pred, real), dim=0)
@@ -408,12 +408,11 @@ class squared_correlation(torch.nn.Module):
         return corr
 
     def check_correctness(self, real, pred):
-        # if  real.dim() == 0: #//TODO is this even valid?
-        #     return real, pred
-        if real.dim() == 0:
-            raise Exception(f"real:\n{real}\n and pred:\n{pred}\n")
+        if real.dim() == 0: #//TODO check
+            return real.item(), pred.item()
         if len(real) == 0:
             return real, pred
+
         # print("Real and pred:")
         # print(real,"\n", pred)
         if len(torch.unique(real)) == 1:
