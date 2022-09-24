@@ -9,9 +9,11 @@
 127.0.0.1:8000:/?token=417c65a720ebe817507356246b10f9a925d3b89cbb60ed50
 '''
 import copy
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas
 from sklearn.manifold import TSNE
 import seaborn as sbs
 import seaborn_image as sbsi
@@ -29,6 +31,8 @@ from ray.tune.schedulers import ASHAScheduler
 import wandb
 import datetime
 import ray
+import os
+import pickle
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -147,41 +151,121 @@ class plot:
         sbs.lineplot(x)
         return
 
-class plot_from_csv:
-    def __init__(self, fontsize=18):
-        self.fontsize = fontsize
+    def filter_df(self, df, filter):
+        for f in filter:
+            df = df[df[f]]
+
+    @staticmethod
+    def filter(df, reverse=False, filter_unrealistic=False):
+        if filter_unrealistic:
+            df = df[(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_DANN_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0")]
+
+        if not reverse:
+            df = df[(df["model"]=="BrNet_DANN_entropy")|(df["model"]=="BrNet")|(df["model"]=="BrNet_DANN_corr")|(df["model"]=="BrNet_DANN_corr_conditioned_0")|(df["model"]=="BrNet_CF_free_features_corr_conditioned_0")|(df["model"]=="BrNet_CF_free_labels_entropy_conditioned_0")|(df["model"]=="BrNet_CF_free_labels_entropy")|(df["model"]=="BrNet_DANN_entropy_conditioned_0")|(df["model"]=="BrNet_CF_free_features_corr")|(df["model"]=="BrNet_CF_free_labels_corr")|(df["model"]=="BrNet_CF_free_labels_corr_conditioned_0")]
+        else:
+            df = df[(df["model"]!="BrNet_DANN_entropy")&(df["model"]!="BrNet")&(df["model"]!="BrNet_DANN_corr")&(df["model"]!="BrNet_DANN_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_features_corr_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_entropy_conditioned_0")&(df["model"]!="BrNet_CF_free_labels_entropy")&(df["model"]!="BrNet_DANN_entropy_conditioned_0")&(df["model"]!="BrNet_CF_free_features_corr")&(df["model"]!="BrNet_CF_free_labels_corr")&(df["model"]!="BrNet_CF_free_labels_corr_conditioned_0")]
+        return df
+
+    @staticmethod
+    def plot_heatmap(table, de_correlate_confounder_target, target_domain_samples, ax=None):
+        if de_correlate_confounder_target:
+            index = 1
+        else:
+            index = 0
+        df = table
+        df = df[df["config.de_correlate_confounder_target"] == de_correlate_confounder_target]
+        df = df[df["config.target_domain_samples"] == target_domain_samples]
+        df = df.pivot_table(index="model", columns="summary_metrics.confounder_strength", values="classification_accuracy")
+        df = df.reindex(df[index].sort_values(ascending=False).index)
+        if ax==None:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=1)
+        else:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=1, ax=ax)
+
+    @staticmethod
+    def split_and_plot_heatmaps(df, de_correlate_confounder_target, target_domain_samples):
+        fig,ax = plt.subplots(1,2, figsize=(20,4), constrained_layout=True)
+        df1 = plot.filter(df, filter_unrealistic=True)
+        plot.plot_heatmap(df1, de_correlate_confounder_target, target_domain_samples, ax[0])
+
+        df2 = plot.filter(df, reverse=True)
+        plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
+
+    @staticmethod
+    def plot_heatmap_with_mean(df, ax=None):
+        df_mean = df.groupby("model")["classification_accuracy"].mean()
+        df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
+        df = df.pivot_table(index="model", columns="experiment", values="classification_accuracy")
+        df = pd.concat([df, df_mean], axis=1)
+        df = df.reindex(df.sort_values(by="mean", ascending=False).index)
+        if ax==None:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None)
+        else:
+            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None, ax=ax)
+
+    @staticmethod
+    def split_and_plot_heatmaps_with_mean(df):
+        fig,ax = plt.subplots(2,1, figsize=(14,8), constrained_layout=True)
+        df1 = plot.filter(df, filter_unrealistic=True)
+        plot.plot_heatmap_with_mean(df1, ax[0])
+
+        df2 = plot.filter(df, reverse=True)
+        plot.plot_heatmap_with_mean(df2, ax[1])
+
+
+
+
+class wandb_sync:
+    def __init__(self):
         pass
 
-    # if None then newest is taken
-    def accuracy_vs_epoch(self, project_csv_path, config_filter, groupby):
-        df_list = self.convert_and_filter_df(project_csv_path, config_filter)
-        title = ""
-        for cf in config_filter:
-            title = f"{title} \n {cf}={config_filter[cf]}"
-        fig, ax = plt.subplots(2,1,figsize=(20,14))
-        fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
-        #model_name = df["model"]
+    @staticmethod
+    def sync_wandb_data(project=None, filters=None, force_reload=False):
+        assert(project is not None)
+        path = wandb_sync.get_path_from_filters(project, filters)
+        t = time.time()
+        if (not os.path.isdir(path)) or force_reload:
+            os.makedirs(path, exist_ok=True)
 
-        #for df in df_list:
-            #name = df["model"][0]
-        #for df in range(len(df_list)):
-            #df_list[df].to_csv(f"df {df}.csv")
-        #df_list[1].to_csv("df file.csv")
-        df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
-        #df.to_csv("df file.csv")
-        classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
-        sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
+            entity = "confounder_in_ml"
+            if project==None:
+                project = "BrNet on br_net data"
 
-        if "confounder_accuracy" in df:
-            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
-            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+            api = wandb.Api()
+            runs = api.runs(entity + "/" + project, filters=filters)
 
-        plt.tight_layout()
-        return
+            history_list, config_list, name_list = [], [], []
+            for run in runs:
+                # .summary contains the output keys/values for metrics like accuracy.
+                #  We call ._json_dict to omit large files
+                history_list.append(run.history(samples=100000))
 
+                # .config contains the hyperparameters.
+                #  We remove special values that start with _.
+                config_list.append(
+                    {k: v for k,v in run.config.items()
+                     if not k.startswith('_')})
 
+                # .name is the human-readable name of the run.
+                name_list.append(run.name)
+            history_dict = [hl.to_dict() for hl in history_list]
 
-    def convert_and_filter_df(self, project_csv_path, config_filter):
+            #print(history_dict)
+            #print("\n\n")
+            #print(history_dict)
+            runs_df = pd.DataFrame({
+                "history": history_dict,
+                "config": config_list,
+                "name": name_list
+            })
+            #runs_df.to_csv(f"{project}.csv")
+            runs_df.to_pickle(f"{path}/sync.pkl")
+            runs_df.to_json(f"{path}/sync.json")
+        print(f"Syncing took {time.time() - t} seconds")
+        return runs_df
+
+    @staticmethod
+    def convert_and_filter_df(project_csv_path, config_filter):
         project_df = pd.read_json(project_csv_path)
         #project_df.to_csv("project_df.csv")
         # filter data
@@ -231,6 +315,194 @@ class plot_from_csv:
 
 
         return filtered_dfs
+    # returns best network from a wandb project and one specific run (marked by batch_date)
+
+    # get runs matching a specific project, batch_date and tag
+    @staticmethod
+    def get_runs(project=None, filters=None):
+        assert(project!=None and filters!=None)
+
+        api = wandb.Api()
+        runs = (api.runs(path=f"confounder_in_ml/{project}", filters=filters, order="-summary_metrics.classification_accuracy"))
+        return runs
+
+    # returns a list of the best run for every model
+    @staticmethod
+    def get_best_runs(project=None, filters=None, force_reload=False):
+        print("Searching for best runs ...",end=" ")
+        t = time.time()
+        path = wandb_sync.get_path_from_filters(project, filters)
+        file_path = path + "/best_result.pkl"
+
+        # If path does not exist or force_reload is true then the runs are loaded with the wandb api
+        if not os.path.exists(file_path) or force_reload:
+            runs = wandb_sync.get_runs(project, filters)
+            print(len(runs))
+            run_names = []
+
+            for r in runs:
+                run_names.append(r.name)
+                assert(r.name == r.config["model_name"])
+            run_names = list(dict.fromkeys(run_names))
+            #print(run_names)
+
+            best_runs = []
+            for m in run_names:
+                filters_mod = {"config.model_name": m}
+                runs = wandb_sync.get_runs(project, filters|filters_mod)
+                if len(runs) == 0:
+                    raise Exception("get_best_runs: no runs found")
+                best_runs.append(runs[0])
+
+            assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
+
+            print(f"{len(best_runs)} models found in database ...", end=" ")
+
+            best_runs_dir = {"name": [], "run_path":[]}
+            for run in best_runs:
+                for key in run.config:
+                    best_runs_dir[key] = []
+                for key in run.summary_metrics:
+                    best_runs_dir[key] = []
+
+            keys = best_runs_dir.keys()
+            for run in best_runs:
+                for key in keys:
+                    if key in run.config.keys():
+                        best_runs_dir[key].append(run.config[key])
+                    elif key in run.summary_metrics.keys():
+                        best_runs_dir[key].append(run.summary_metrics[key])
+                    elif key == "name":
+                        best_runs_dir["name"].append(run.name)
+                    elif key == "run_path":
+                        best_runs_dir["run_path"].append(run.path)
+                    else:
+                        best_runs_dir[key].append(None)
+            df = pd.DataFrame.from_dict(data=best_runs_dir, orient="columns")
+
+            os.makedirs(path, exist_ok=True)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            df.to_pickle(file_path)
+
+        # read offline data and return
+        try:
+            df = pd.read_pickle(path + "/best_result.pkl")
+        except:
+            raise Exception("get_best_runs: Error in reading file")
+        print(f"done ({round(time.time()-t, 3)}s)")
+        return df
+
+
+    @staticmethod
+    def create_models_from_runs(project, filters, force_reload=False, load_complete_model=True):
+        print("Re-creating models ...", end=" ")
+        t = time.time()
+        path = wandb_sync.get_path_from_filters(project, filters)
+
+        try:
+            #print(path + "/best_result.pkl")
+            runs = pd.read_pickle(path + "/best_result.pkl")
+        except:
+            raise Exception("create_models_from_runs: no best_results.pkl available")
+
+        model_list = []
+
+        for model in runs["model_name"]:
+            config = runs.loc[runs["model_name"] == model]
+            model_class = config.loc[:,"model_class"].values[0]
+            random_int = config.loc[:,"random"].values[0]
+            file_name_weights = str(random_int) + ".pt"
+            dir_path_weights = os.path.join(path, "weights")
+            file_path_weights = os.path.join(dir_path_weights, file_name_weights)
+
+            file_name_model = str(random_int) + ".pt"
+            dir_path_model = os.path.join(path, "model")
+            file_path_model = os.path.join(dir_path_model, file_name_model)
+
+            if load_complete_model and os.path.exists(file_path_model) and not force_reload:
+                model = torch.load(file_path_model)
+            else:
+                # conditioning is needed for init of model
+                conditioning = config.loc[:,"conditioning"].values[0]
+                if conditioning == "" or pd.isna(conditioning):
+                    conditioning = None
+
+                model_fact = getattr(Models, model_class)
+                if issubclass(model_fact, Models.BrNet):
+                    model = model_fact()
+                elif issubclass(model_fact, Models.BrNet_adversarial):
+                    model = model_fact(config.loc[:,"alpha"].values[0], conditioning=conditioning)
+                elif issubclass(model_fact, Models.BrNet_adversarial_double):
+                    model = model_fact(config.loc[:,"alpha"].values[0], config.loc[:,"alpha2"].values[0], conditioning=conditioning)
+                else:
+                    raise AssertionError("Did not find any matching model")
+
+
+                if not os.path.exists(file_path_weights) or force_reload:
+                    run_path = config.loc[:,"run_path"].values[0]
+                    os.makedirs(dir_path_weights, exist_ok=True)
+                    wandb.restore(file_name_weights, run_path=os.path.join(*run_path), root=dir_path_weights)
+                    #print(f"Restored file {file_name_weights}")
+                model_weights = torch.load(file_path_weights)
+                model.load_state_dict(model_weights)
+                os.makedirs(dir_path_model, exist_ok=True)
+                torch.save(model, file_path_model)
+            model.random = random_int
+            model_list.append(model)
+        print(f"done ({round(time.time()-t, 3)}s)")
+        return model_list
+
+    @staticmethod
+    def get_path_from_filters(project, filters):
+        path = os.getcwd()
+        folder = f"wandb/{project}/"
+        for f in sorted(filters):
+            folder = folder + f"{f}={filters[f]},"
+        return os.path.join(path, folder)
+
+
+
+
+class plot_from_wandb:
+    def __init__(self, fontsize=18):
+        self.fontsize = fontsize
+        pass
+
+    def get_from_table(self, file, string):
+        df = pd.read_json(file)
+        df = {d[string] for d in df["config"]}
+        df = [d for d in df]
+        df.sort(reverse=True)
+        return df
+
+    # if None then newest is taken
+    # basically deprecated (only used when experiments are done seperately from the hyperparameters)
+    def accuracy_vs_epoch(self, project_csv_path, config_filter, groupby):
+        df_list = wandb_sync.convert_and_filter_df(project_csv_path, config_filter)
+        title = ""
+        for cf in config_filter:
+            title = f"{title} \n {cf}={config_filter[cf]}"
+        fig, ax = plt.subplots(2,1,figsize=(20,14))
+        fig.suptitle("Accuracy vs Epoch", fontsize=self.fontsize)
+        #model_name = df["model"]
+
+        #for df in df_list:
+            #name = df["model"][0]
+        #for df in range(len(df_list)):
+            #df_list[df].to_csv(f"df {df}.csv")
+        #df_list[1].to_csv("df file.csv")
+        df = pd.concat(df_list, ignore_index=True).reset_index(drop=True)
+        #df.to_csv("df file.csv")
+        classification_accuracy = df.pivot("epoch", groupby, "classification_accuracy")
+        sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"Classification accuracy\n{title}", ylim=(0.45,1.05))
+
+        if "confounder_accuracy" in df:
+            confounder_accuracy = df.pivot("epoch", groupby, "confounder_accuracy")
+            sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"Confounder accuracy\n{title}", ylim=(0.45,1.05))
+
+        plt.tight_layout()
+        return
 
 
 class CfDataset(torch.utils.data.Dataset):
@@ -370,8 +642,8 @@ class generator:
             if index != n_groups:
                 #print("Index is ",index)
                 cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
-            else:
-                cf[i] = np.nan
+            #else:
+                #cf[i] = np.nan TODO
 
         # derive mf from class-label
         for g in range(n_groups):
@@ -385,14 +657,19 @@ class generator:
             x[i,0, 16 - overhang:, 16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * mf[i]
 
             # check if confounder_labels feature should be added
-            if not np.isnan(cf[i]):
-                x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
-                x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+            #if not np.isnan(cf[i]): TODO
+            x[i,0, 16 - overhang:, :16 + overhang] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
+            x[i,0,:16 + overhang,16 - overhang:] += self.gkern(kernlen=16+overhang, nsig=5) * cf[i]
 
             # add random noise
             x[i] = x[i] + np.random.normal(0,0.01,size=(1,32,32))
 
-        self.confounder_features = cf
+        # if there is no confounder in the image then we need to create some arbitrary values
+        # otherwise our model gets a tensor with nan as input
+        if np.isnan(cf).any():
+            self.confounder_features = np.full((N*n_groups), 0)
+        else:
+            self.confounder_features = cf
 
         # if self.conditioning != -1:
         #     self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
@@ -498,14 +775,11 @@ class confounder_injection:
         pass
 
 class train:
-    def __init__(self, mode, model, train_dataloader, device, optimizer):
+    def __init__(self, model, device="cpu"):
         self.model = model
-        self.mode = mode
-        self.train_dataloader = train_dataloader
         self.device = device
         self.accuracy = []
         self.loss = []
-        self.optimizer = optimizer
 
     def test(self, test_dataloader):
         size = len(test_dataloader.dataset)
@@ -533,25 +807,30 @@ class train:
 
         return classification_accuracy, confounder_accuracy
 
-    def train_normal(self):
+    def train_normal(self, train_dataloader, optimizer):
         self.model = self.model.to(self.device)
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
 
             # Compute prediction error
             class_pred, _, _ = self.model(X)
+
+            # check if tensors are valid
+            self.check_for_nan([class_pred, y])
+
+            # compute loss
             loss = self.model.loss(class_pred, y)
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def train_adversarial(self):
+    def train_adversarial(self, train_dataloader, optimizer):
         adversarial_mode = self.model.mode
         self.model = self.model.to(self.device)
 
@@ -560,14 +839,28 @@ class train:
         adversarial_loss_function = self.model.adv_loss
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adversary_label = label[adversarial_mode].to(self.device)
 
+            # print(f"--- train_adversarial ---\n"
+            #       f"y:{y}\n"
+            #       f"adversary_label:{adversary_label}")
+
             # prediction
             class_pred, adversary_pred, _ = self.model(X)
-            adversary_label, adversary_pred = condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
+            #print(f"class_pred: {class_pred}")
+            #print(f"class_real: {y}")
+            #print(f"adversary_pred: {adversary_pred}")
+            adversary_label, adversary_pred = self.condition_and_filter(y=y, real=adversary_label, pred=adversary_pred, condition=self.model.conditioning)
+            #print("--- filtering ---")
+            # print(f"adversary_label: {adversary_label}")
+            # print(f"adversary_pred: {adversary_pred}\n\n")
+            #raise Exception
+
+            # check if tensors are valid
+            self.check_for_nan([adversary_label, adversary_pred, class_pred, y])
 
             # compute error
             class_loss = class_loss_function(class_pred, y)
@@ -575,13 +868,13 @@ class train:
             loss = class_loss + adversary_loss
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
 
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def train_adversarial_double(self):
+    def train_adversarial_double(self, train_dataloader, optimizer):
         adversary_mode = self.model.mode
         adversary2_mode = self.model.mode2
         self.model = self.model.to(self.device)
@@ -592,7 +885,7 @@ class train:
         adversary2_loss_function = self.model.adv2_loss
 
         self.model.train()
-        for batch, (X,label) in enumerate(self.train_dataloader):
+        for batch, (X,label) in enumerate(train_dataloader):
             X = X.to(self.device)
             y = label["y"].to(self.device)
             adversary_label = label[adversary_mode].to(self.device)
@@ -600,7 +893,10 @@ class train:
 
             # prediction
             class_pred, adversary_pred, adversary2_pred = self.model(X)
-            adversary_label, adversary_pred, adversary2_label, adversary2_pred = condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
+            adversary_label, adversary_pred, adversary2_label, adversary2_pred = self.condition_and_filter_double(y=y, real=adversary_label, pred=adversary_pred, real2=adversary2_label, pred2=adversary2_pred, condition=self.model.conditioning)
+
+            # check if tensors are valid
+            self.check_for_nan([adversary_label, adversary_pred, adversary2_pred, adversary2_label, class_pred, y])
 
             # compute error
             class_loss = class_loss_function(class_pred, y)
@@ -609,21 +905,54 @@ class train:
             loss = class_loss + adversary_loss + adversary2_loss
 
             # Backpropagation
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
         return
 
-    def run(self):
+    def check_for_nan(self, array):
+        for tensor in array:
+            if torch.isnan(tensor).any():
+                print("Array with NAN values:")
+                print(array)
+                raise Exception("nan in input data detected")
+
+    def run(self, train_dataloader, optimizer):
         if self.model.adversarial:
             if isinstance(self.model, Models.BrNet_adversarial_double):
-                self.train_adversarial_double()
+                self.train_adversarial_double(train_dataloader=train_dataloader, optimizer=optimizer)
             else:
-                self.train_adversarial()
+                self.train_adversarial(train_dataloader=train_dataloader, optimizer=optimizer)
         else:
-            self.train_normal()
+            self.train_normal(train_dataloader=train_dataloader, optimizer=optimizer)
 
         return
+
+    def condition_and_filter(self, y, real, pred, condition):
+        #assert(real != -1)
+        if condition != None:
+            filtered_real = real[y == condition]
+            filtered_pred = pred[y == condition]
+        else:
+            filtered_real = real
+            filtered_pred = pred
+
+        return filtered_real, filtered_pred
+
+    def condition_and_filter_double(self, y, real, pred, real2, pred2, condition):
+        #assert(real != -1)
+        if condition != None:
+            filtered_real = real[y == condition]
+            filtered_pred = pred[y == condition]
+            filtered_real2 = real2[y == condition]
+            filtered_pred2 = pred2[y == condition]
+        else:
+            filtered_real = real
+            filtered_pred = pred
+            filtered_real2 = real2
+            filtered_pred2 = pred2
+
+        return filtered_real, filtered_pred, filtered_real2, filtered_pred2
 
 
 class confounder:
@@ -633,8 +962,7 @@ class confounder:
         torch.backends.cudnn.benchmark = True
         self.mode = mode
         self.seed = seed
-        self.test_dataloader = []
-        self.train_dataloader = None
+        self.random_numbers = np.random.default_rng()
 
         self.train_x = None
         self.train_y = None
@@ -673,21 +1001,25 @@ class confounder:
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
-    def generate_data(self, mode=None, overlap=0, samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
+    def generate_data(self, mode=None, overlap=0, samples=512, test_samples=512, target_domain_samples=0, target_domain_confounding=0, train_confounding=1, test_confounding=[1], de_correlate_confounder_test=False, de_correlate_confounder_target=False, params=None):
         self.reset_seed()
 
         iterations = len(test_confounding)
         self.n_classes = len(params[0])
-        self.train_x, self.test_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32)), np.empty((iterations,samples*self.n_classes,1,32,32))
-        self.train_y, self.test_y = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes)), np.empty((iterations,samples*self.n_classes))
+        self.train_x = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes,1,32,32))
+        self.test_x = np.empty((iterations,test_samples*self.n_classes,1,32,32))
+
+        self.train_y = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
+        self.test_y = np.empty((iterations,test_samples*self.n_classes))
+
         self.train_domain_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
-        self.test_domain_labels = np.empty((iterations,samples*self.n_classes))
+        self.test_domain_labels = np.empty((iterations,test_samples*self.n_classes))
 
         self.train_confounder_labels = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
-        self.test_confounder_labels = np.empty((iterations,samples*self.n_classes))
+        self.test_confounder_labels = np.empty((iterations,test_samples*self.n_classes))
 
         self.train_confounder_features = np.empty((iterations,samples*self.n_classes + target_domain_samples*self.n_classes))
-        self.test_confounder_features = np.empty((iterations,samples*self.n_classes))
+        self.test_confounder_features = np.empty((iterations,test_samples*self.n_classes))
 
         self.samples = samples
         self.target_domain_samples = target_domain_samples
@@ -725,7 +1057,7 @@ class confounder:
         i = 0
         for cf_var in test_confounding:
             # test data
-            g_test = generator(mode=mode, samples=samples, overlap=overlap, confounding_factor=cf_var, params=params, domain=0, de_correlate_confounder=de_correlate_confounder_test)
+            g_test = generator(mode=mode, samples=test_samples, overlap=overlap, confounding_factor=cf_var, params=params, domain=0, de_correlate_confounder=de_correlate_confounder_test)
             g_test_data =g_test.get_data()
             self.test_x[i] = g_test_data[0]
             self.test_y[i] = g_test_data[1]
@@ -739,6 +1071,11 @@ class confounder:
             if self.debug:
                 print("--- generate_data ---")
                 #print("Generated Data of dimension ", self.train_x.shape)
+            # print(f"--- Data generation ---\n"
+            #       f"y:{self.train_y}\n"
+            #       f"confounder_labels:{self.train_confounder_labels}\n"
+            #       f"confounder_features:{self.train_confounder_features}\n"
+            #       f"domain_labels:{self.train_domain_labels}")
         return self.train_x, self.train_y, self.test_x, self.test_y
 
     def inject_confounder(self, type=None):
@@ -748,6 +1085,8 @@ class confounder:
         self.reset_seed()
         name = model.get_name()
         self.model = copy.deepcopy(model)
+        mode = "offline"
+        working_directory = os.getcwd()
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -755,9 +1094,25 @@ class confounder:
             else:
                 device="cpu"
 
+        # if wandb_init["dir"] == None:
+        #     wandb_init["dir"] = os.getcwd()
+        #
+        # batch_size_temp =hyper_params["batch_size"]
+        # print(f"\n--- Debugging ---\n"
+        #       f"Model={self.model.get_name()}\n"
+        #       f"Train_length={len(self.train_y[0])}\n"
+        #       f"Batch_size={batch_size_temp}")
+
+        if len(self.train_y[0]) < hyper_params["batch_size"]:
+            # print(f"Batch_size was too high with length of array={len(self.train_y[0])} and batch_size={batch_size_temp}\n")
+            hyper_params["batch_size"] = len(self.train_y[0])
+            if wandb_init.get("finetuning") != 1:
+                raise Exception("Batch_size had to be reset although finetuning is off. Choose a correct batch_size")
+
 
         config = {
-            "model":name,
+            "model_name":name,
+            "model_class":type(self.model).__name__,
             "epochs":epochs,
             "device": device,
             "optimizer": optimizer,
@@ -773,7 +1128,9 @@ class confounder:
             "de_correlate_confounder_target": self.de_correlate_confounder_target,
             "params": self.params,
             "seed": self.seed,
+            "random": self.random_numbers.integers(sys.maxsize)
         }
+
 
         if use_wandb:
             if "project" not in wandb_init:
@@ -784,6 +1141,8 @@ class confounder:
                 wandb_init["date"] = "None"
             if "batch_date" not in wandb_init:
                 wandb_init["batch_date"] = "None"
+            config["finetuning"] = wandb_init.get("finetuning")
+            config["pbt"] = wandb_init.get("pbt")
             config["date"] = wandb_init["date"]
             config["batch_date"] = wandb_init["batch_date"]
 
@@ -803,7 +1162,8 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"))
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"), mode=mode, dir=wandb_init["dir"])
+            time.sleep(5)
             config = wandb.config
 
         if wandb_sweep:
@@ -825,42 +1185,82 @@ class confounder:
         #         config['weight_decay'] = 0
 
         model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
-        self.train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
-        for cf_var in range(0,len(self.index)):
-            self.test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
+        train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
 
-        for i in range(0, epochs):
+        test_dataloader = []
+        for cf_var in range(0,len(self.index)):
+            test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
+
+        for epoch in range(1, epochs+1):
             # load new results
 
-            t = train(self.mode, self.model, self.train_dataloader, device, model_optimizer)
-            t.run()
+            t = train(self.model, device)
+            t.run(train_dataloader, model_optimizer)
 
             for cf_var in range(0,len(self.index)):
-                classification_accuracy, confounder_accuracy = t.test(self.test_dataloader[cf_var])
+                classification_accuracy, confounder_accuracy = t.test(test_dataloader[cf_var])
 
                 results["confounder_strength"].append(self.index[cf_var])
                 results["model_name"].append(self.model.get_name()+self.model_title_add)
-                results["epoch"].append(i+1)
+                results["epoch"].append(epoch)
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if use_wandb and ((i+1) % epochs) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-                elif use_wandb and (i % 10) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=False, step=i)
+                if use_wandb and (epoch % epochs) == 0:
+                    # save model parameters and upload to wandb
+                    # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+                    # torch.save(self.model.state_dict(), path)
+                    # wandb.save(path)
+
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=True, step=epoch)
+
+                elif use_wandb and (epoch % 10) == 0:
+                    # save model parameters and upload to wandb
+                    # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+                    # torch.save(self.model.state_dict(), path)
+                    # wandb.save(path)
+
+                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=False, step=epoch)
 
                 # if wandb_init != None and ((i+1) % 10) == 0:
                 #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
             # register accuracy in use_tune
-                if use_tune:# and ((i+1) % 10) == 0:
-                   assert(len(self.index)==1)
-                   tune.report(mean_accuracy=classification_accuracy)
+                if use_tune and (epoch % 10) == 0:
+                    # PBT needs checkpointing
+                    with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
+                        # create checkpoint file
+                        path = os.path.join(checkpoint_dir,"checkpoint")
+                        # save state to checkpoint file
+                        torch.save(
+                            {
+                                "step": epoch,
+                                "model_state_dict":model.state_dict(),
+                                "mean_accuracy":classification_accuracy
+                            },
+                            path,
+                        )
+                    # report to tune
+                    tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
+            # save model parameters and upload to wandb
+            path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+            torch.save(self.model.state_dict(), path)
+            wandb.save(path)
+
             #wandb.log()
-            wandb.config.update({"trained_model": self.model},allow_val_change=True)
+            wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
+
+            if mode == "offline" and wandb_init["dir"] == None:
+                time.sleep(10)
+                print(f"--- syncing ---\n"
+                      f"current_dir={working_directory}\n"
+                      f"files={working_directory}")
+                os.system(f"conda run -n confounder_3.10 wandb sync \"{working_directory}\" --sync-all")
+
+
         self.results = pd.DataFrame(results)
         confounder.all_results = pd.concat([confounder.all_results, self.results], ignore_index=True)
         #confounder_labels.all_results.append(self.results)
@@ -870,6 +1270,44 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
+
+    def test(self, batch_size=1):
+        assert(len(self.test_x) == 1)
+        # create test dataloader
+        test_dataloader = create_dataloader(self.test_x[0], self.test_y[0], domain_labels=self.test_domain_labels[0], confounder_labels=self.test_confounder_labels[0], batch_size=batch_size, confounder_features=self.test_confounder_features[0]).get_dataloader()
+        t = train(self.model)
+        classification_accuracy, confounder_accuracy = t.test(test_dataloader)
+        return classification_accuracy, confounder_accuracy
+
+    def test_best_networks(self, project="Hyperparameters", filters=None, force_reload=False, load_complete_model=True, experiment=0):
+        t = time.time()
+        # get best runs
+        wandb_sync.get_best_runs(project=project, filters=filters, force_reload=force_reload)
+
+        # get models
+        model_list = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
+
+        # test networks and save accuracy
+        results = {"model":[], "classification_accuracy":[], "confounder_accuracy":[], "random":[], "experiment":[experiment for x in range(len(model_list))]}
+        keys = filters.keys()
+        for k in keys:
+            results[k] = []
+
+        for m in model_list:
+            self.model = m
+            acc = self.test(batch_size=64)
+            results["model"].append(m.get_name())
+            results["classification_accuracy"].append(acc[0])
+            results["confounder_accuracy"].append(acc[1])
+            for k in keys:
+                results[k].append(filters[k])
+            results["random"].append(self.model.random)
+
+        print(f"Runs synced, models re-created and tested (took {round(time.time()-t, 3)}s)\n")
+
+        results_df = pandas.DataFrame.from_dict(results)
+        return results_df
+
 
     def plot(self, accuracy_vs_epoch=False, accuracy_vs_strength=False, tsne=False, image=False, train_images=False, test_images=False, test_image_iteration=[0], saliency=False, saliency_sample=0, smoothgrad=False, saliency_iteration=[0], image_slider=None, plot_all=False, epoch_vs_strength_ideal=False):
         p = plot()
@@ -970,7 +1408,7 @@ class confounder:
         x.requires_grad = True
 
         # predict labels
-        class_pred, domain_pred = self.model(x)
+        class_pred, domain_pred, _ = self.model(x)
 
         # take argmax because we are only interested in the most probable class (and why the models decides in favor of it)
         # argmax returns vector with index of the maximum value (zero for class zero, one for class one)
@@ -984,76 +1422,72 @@ class confounder:
         t = time.time() - confounder.t
         print(f"Computation took {int(t/60)} min and {int(t%60)} s")
 
-def sync_wandb_data(project=None):
-    t = time.time()
-    assert(project is not None)
-    entity = "confounder_in_ml"
-    if project==None:
-        project = "BrNet on br_net data"
 
-    api = wandb.Api()
-    runs = api.runs(entity + "/" + project)
+class helper():
+    def __init__(self):
+        pass
 
-    history_list, config_list, name_list = [], [], []
-    for run in runs:
-        # .summary contains the output keys/values for metrics like accuracy.
-        #  We call ._json_dict to omit large files
-        history_list.append(run.history(samples=100000))
 
-        # .config contains the hyperparameters.
-        #  We remove special values that start with _.
-        config_list.append(
-            {k: v for k,v in run.config.items()
-             if not k.startswith('_')})
+    @staticmethod
+    def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target, force_reload=False, seed=None, load_complete_model=True, experiment=0, finetuning=None):
+        print(f"Experiment {experiment}:"
+              f"\n-- batch_date={batch_date}"
+              f"\n-- test_confounding={test_confounding}"
+              f"\n-- target_domain_samples={target_domain_samples}"
+              f"\n-- target_domain_confounding={target_domain_confounding}"
+              f"\n-- de_correlate_confounder_target={de_correlate_confounder_target}")
 
-        # .name is the human-readable name of the run.
-        name_list.append(run.name)
-    history_dict = [hl.to_dict() for hl in history_list]
+        params = [
+            [[1, 4], [3, 6]], # real feature
+            [[10, 12], [20, 22]] # confounder_labels
+        ]
 
-    #print(history_dict)
-    #print("\n\n")
-    #print(history_dict)
-    runs_df = pd.DataFrame({
-        "history": history_dict,
-        "config": config_list,
-        "name": name_list
-    })
+        c = confounder(seed=seed)
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_target, params=params)
 
-    #runs_df.to_csv(f"{project}.csv")
-    #runs_df.to_pickle(f"{project}.pkl")
-    runs_df.to_json(f"{project}.json")
-    print(f"Syncing took {time.time() - t} seconds")
+        filters = {
+            "summary_metrics.confounder_strength": test_confounding,
+            "config.target_domain_samples": target_domain_samples,
+            "config.target_domain_confounding": target_domain_confounding,
+            "config.de_correlate_confounder_target": de_correlate_confounder_target,
+            "config.batch_date": batch_date,
+        }
 
-def get_from_table(file, string):
-    df = pd.read_json(file)
-    df = {d[string] for d in df["config"]}
-    df = [d for d in df]
-    df.sort(reverse=True)
-    return df
+        if finetuning != None:
+            print(f"-- finetuning={finetuning}")
+            filters["config.finetuning"] = finetuning
 
-def condition_and_filter(y, real, pred, condition):
-    #assert(real != -1)
-    if condition != None:
-        filtered_real = real[y == condition]
-        filtered_pred = pred[y == condition]
-    else:
-        filtered_real = real
-        filtered_pred = pred
+        df = c.test_best_networks(filters=filters, force_reload=force_reload, load_complete_model=load_complete_model, experiment=experiment)
+        return df
 
-    return filtered_real, filtered_pred
+    @staticmethod
+    def BrNet_on_BrNet_data_all(batch_date, force_reload=False, seed=918291, load_complete_model=True, legacy=True):
+        t = time.time()
+        if legacy:
+            experiments = [
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno confounder\n0/512"),#1),
+                #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="no-confounder\n16/512"),#2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno confounder\n16/512"),#2),
+                #helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment=4),
 
-def condition_and_filter_double(y, real, pred, real2, pred2, condition):
-    #assert(real != -1)
-    if condition != None:
-        filtered_real = real[y == condition]
-        filtered_pred = pred[y == condition]
-        filtered_real2 = real2[y == condition]
-        filtered_pred2 = pred2[y == condition]
-    else:
-        filtered_real = real
-        filtered_pred = pred
-        filtered_real2 = real2
-        filtered_pred2 = pred2
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nde-correlated\n0/512"),#3),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n16/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="5.\nde-correlated\n64/512"),#5),
+            ]
+        else:
+            experiments = [
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno-confounder\n0/512"),#1),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno-confounder\n16/512"),#2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nno-confounder\n16/512\nfinetuning"),#),
 
-    return filtered_real, filtered_pred, filtered_real2, filtered_pred2
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n0/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="5.\nde-correlated\n16/512"),#5),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="6.\nde-correlated\n16/512\nfinetuning"),#6),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="7.\nde-correlated\n64/512"),#7),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="8.\nde-correlated\n64/512\nfinetuning"),#8),
+            ]
+
+        df = pd.concat(experiments)
+        print(f"--- Synced and processed all experiments (took {round(time.time()-t, 3)}s) ---")
+        return df.reset_index(drop=True)
 
