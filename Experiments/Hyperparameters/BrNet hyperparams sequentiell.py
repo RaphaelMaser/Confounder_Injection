@@ -1,3 +1,5 @@
+import sys
+
 import matplotlib.pyplot as plt
 from ray.tune.integration.wandb import wandb_mixin
 
@@ -13,6 +15,7 @@ from ray.tune import CLIReporter
 import datetime
 import argparse
 import os
+import numpy as np
 import time
 import shutil
 
@@ -28,8 +31,8 @@ cpus_per_trial = 1
 #ray.init(num_cpus=128)
 ray.init()
 local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-#local_dir= os.path.join(os.getcwd(), "ray_results")
 #local_dir = None
+os.path.join(local_dir, f"{np.random.randint(sys.maxsize)}")
 
 search_space = {
     #"epochs":epochs,
@@ -249,6 +252,7 @@ BrNet_DANN_entropy_conditioned_hyperparams()
 #     print(f"Waited for {i} minutes")
 #     time.sleep(60)
 
-
-#os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
-print("--- finished ---")
+t = time.time()
+print("starting sync")
+os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
+print(f"finished sync in {round(time.time()-t, 3)}s")
