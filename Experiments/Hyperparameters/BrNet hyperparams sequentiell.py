@@ -78,7 +78,6 @@ de_correlate_confounder_test = args.de_correlate_confounder_test
 samples = args.samples
 pbt = args.pbt
 epochs = args.epochs
-#TODO just for testing
 finetuning = args.finetuning
 
 # if finetuning==1:
@@ -227,7 +226,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
 #os.environ['WANDB_MODE'] = 'dryrun'
 #os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
 
-# run experiments /TODO un-comment
+# run experiments
 BrNet_hyperparams()
 BrNet_CF_free_labels_entropy_hyperparams()
 BrNet_CF_free_labels_entropy_conditioned_hyperparams()
@@ -249,6 +248,7 @@ BrNet_DANN_entropy_conditioned_hyperparams()
 # for i in range(0,5):
 #     print(f"Waited for {i} minutes")
 #     time.sleep(60)
+
 
 #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
 print("--- finished ---")
