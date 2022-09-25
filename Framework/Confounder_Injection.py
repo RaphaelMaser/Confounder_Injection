@@ -1227,10 +1227,10 @@ class confounder:
                 #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
                 # TODO experimental
-                if use_wandb and (epoch % 10) == 0:
-                    path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-                    torch.save(self.model.state_dict(), path)
-                    wandb.save(path)
+                # if use_wandb and (epoch % 10) == 0:
+                #     path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+                #     torch.save(self.model.state_dict(), path)
+                #     wandb.save(path)
 
                 # register accuracy in use_tune
                 if use_tune and (epoch % 10) == 0:
@@ -1254,9 +1254,9 @@ class confounder:
 
         if use_wandb:
             # save model parameters and upload to wandb
-            # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-            # torch.save(self.model.state_dict(), path)
-            # wandb.save(path)
+            path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+            torch.save(self.model.state_dict(), path)
+            wandb.save(path)
 
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
