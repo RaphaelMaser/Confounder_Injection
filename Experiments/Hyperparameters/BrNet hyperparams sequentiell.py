@@ -149,7 +149,7 @@ def run_tune(search_space):
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir,
-             keep_checkpoints=2,
+             keep_checkpoints_num=2,
              stop=stopper
     )
     #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
