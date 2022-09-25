@@ -120,7 +120,7 @@ def run_tune(search_space):
     if pbt:
         scheduler = tune.schedulers.PopulationBasedTraining(
             time_attr="training_iteration",
-            perturbation_interval=5,
+            perturbation_interval=10,
             hyperparam_mutations=
             {
                 "lr":search_space["lr"],
