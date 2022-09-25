@@ -1226,10 +1226,17 @@ class confounder:
                 # if wandb_init != None and ((i+1) % 10) == 0:
                 #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
 
-            # register accuracy in use_tune
+                # TODO experimental
+                if use_wandb and (epoch % 10) == 0:
+                    path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+                    torch.save(self.model.state_dict(), path)
+                    wandb.save(path)
+
+                # register accuracy in use_tune
                 if use_tune and (epoch % 10) == 0:
                     # PBT needs checkpointing
                     with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
+
                         # create checkpoint file
                         path = os.path.join(checkpoint_dir,"checkpoint")
                         # save state to checkpoint file
@@ -1241,11 +1248,19 @@ class confounder:
                             },
                             path,
                         )
+
                     # report to tune
                     tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
-            self.wandb_finish_and_upload_model()
+            # save model parameters and upload to wandb
+            # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
+            # torch.save(self.model.state_dict(), path)
+            # wandb.save(path)
+
+            #wandb.log()
+            wandb.config.update({"trained_model": self.model}, allow_val_change=True)
+            wandb.finish()
 
             if mode == "offline" and wandb_init["dir"] == None:
                 time.sleep(10)
@@ -1264,17 +1279,6 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
-
-    def wandb_finish_and_upload_model(self):
-        # save model parameters and upload to wandb
-        path = os.path.join(os.getcwd(), str(wandb.config["random"]) + ".pt")
-        torch.save(self.model.state_dict(), path)
-        wandb.save(path)
-
-        #wandb.log()
-        wandb.config.update({"trained_model": self.model}, allow_val_change=True)
-        wandb.finish()
-        return
 
     def test(self, batch_size=1):
         assert(len(self.test_x) == 1)

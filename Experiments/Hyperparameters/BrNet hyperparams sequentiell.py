@@ -128,7 +128,7 @@ def run_tune(search_space):
     if pbt:
         scheduler = tune.schedulers.PopulationBasedTraining(
             time_attr="training_iteration",
-            perturbation_interval=10,
+            perturbation_interval=int(epochs/10),
             hyperparam_mutations=
             {
                 "lr":search_space["lr"],
@@ -243,13 +243,13 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
 
 # run experiments
 BrNet_hyperparams()
-BrNet_CF_free_labels_entropy_hyperparams()
-BrNet_CF_free_labels_entropy_conditioned_hyperparams()
-
-BrNet_CF_free_features_corr_hyperparams()
-BrNet_CF_free_features_corr_conditioned_hyperparams()
-BrNet_DANN_entropy_hyperparams()
-BrNet_DANN_entropy_conditioned_hyperparams()
+# BrNet_CF_free_labels_entropy_hyperparams()
+# BrNet_CF_free_labels_entropy_conditioned_hyperparams()
+#
+# BrNet_CF_free_features_corr_hyperparams()
+# BrNet_CF_free_features_corr_conditioned_hyperparams()
+# BrNet_DANN_entropy_hyperparams()
+# BrNet_DANN_entropy_conditioned_hyperparams()
 
 # BrNet_CF_free_labels_corr_hyperparams()
 # BrNet_CF_free_labels_corr_conditioned_hyperparams()
