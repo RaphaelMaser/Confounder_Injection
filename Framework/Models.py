@@ -1,8 +1,11 @@
+import warnings
+
 from torch import nn
 from Framework.Layers import GradientReversal
 from scipy import stats
 import torch
 import pandas as pd
+from termcolor import colored
 
 def reset_seed():
     torch.manual_seed(42)
@@ -394,13 +397,16 @@ class squared_correlation(torch.nn.Module):
         # print(f"\n\n pred is {pred}\n\n")
         # print(f"\n\n real is {real}\n\n")
 
+        # could happen in conditioning case
+        if real.dim() == 0:
+            warnings.warn(colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red"))
+            return 0
+
         real, pred = self.check_correctness(real=real, pred=pred)
         x = torch.stack((pred, real), dim=0)
         # print(f"\n\n x is {x}\n\n")
 
-        # could happen in conditioning case
-        if real.dim() == 0:
-            return 0
+
         corr_matrix = torch.corrcoef(x)
         # print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         corr = - torch.square(corr_matrix[0][1])
