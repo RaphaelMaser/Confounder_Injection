@@ -408,9 +408,10 @@ class squared_correlation(torch.nn.Module):
         return corr
 
     def check_correctness(self, real, pred):
-        if real.dim() == 0: #//TODO check
-            return real.item(), pred.item()
-        if len(real) == 0:
+        if real.dim() == 0:
+            raise Exception(f"Real:{real}\n and pred:{pred}\n")
+
+        if real.dim() != 0 and len(real) == 0:
             return real, pred
 
         # print("Real and pred:")

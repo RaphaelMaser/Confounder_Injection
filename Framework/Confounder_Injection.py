@@ -337,7 +337,7 @@ class wandb_sync:
         # If path does not exist or force_reload is true then the runs are loaded with the wandb api
         if not os.path.exists(file_path) or force_reload:
             runs = wandb_sync.get_runs(project, filters)
-            print(len(runs))
+            #print(len(runs))
             run_names = []
 
             for r in runs:
@@ -639,6 +639,7 @@ class generator:
         # derive cf from confounder_labels-label
         for i in range(0,len(self.confounder_labels)):
             index = self.confounder_labels[i]
+            # check that index is valid (else the value stays at zero)
             if index != n_groups:
                 #print("Index is ",index)
                 cf[i] = np.random.uniform(params[1][index][0], params[1][index][1])
@@ -667,9 +668,10 @@ class generator:
         # if there is no confounder in the image then we need to create some arbitrary values
         # otherwise our model gets a tensor with nan as input
         if np.isnan(cf).any():
-            self.confounder_features = np.full((N*n_groups), 0)
-        else:
-            self.confounder_features = cf
+            raise Exception("NaN in cf feature vector")
+            #self.confounder_features = np.full((N*n_groups), 0)
+        #else:
+        self.confounder_features = cf
 
         # if self.conditioning != -1:
         #     self.domain_labels[N*self.conditioning:N*(self.conditioning+1)] = -1
@@ -1477,14 +1479,17 @@ class helper():
         else:
             experiments = [
                 helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=0, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno-confounder\n0/512"),#1),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno-confounder\n16/512"),#2),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=16, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nno-confounder\n16/512\nfinetuning"),#),
-
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n0/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=8, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno-confounder\n8/512"),#2),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=0, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nde-correlated\n0/512"),#4),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=8, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n8/512"),#5),
                 helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="5.\nde-correlated\n16/512"),#5),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="6.\nde-correlated\n16/512\nfinetuning"),#6),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="7.\nde-correlated\n64/512"),#7),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="8.\nde-correlated\n64/512\nfinetuning"),#8),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="6.\nde-correlated\n64/512"),#7),
+
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=8, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno-confounder\n8/512\nfinetuning"),#),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=8, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nde-correlated\n8/512\nfinetuning"),#6),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nde-correlated\n16/512\nfinetuning"),#6),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n64/512\nfinetuning"),#8),
+
             ]
 
         df = pd.concat(experiments)
