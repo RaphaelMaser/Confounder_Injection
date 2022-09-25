@@ -399,8 +399,8 @@ class squared_correlation(torch.nn.Module):
         # print(f"\n\n x is {x}\n\n")
 
         # could happen in conditioning case
-        # if len(pred) == 0:
-        #     return 0
+        if real.dim() == 0:
+            return 0
         corr_matrix = torch.corrcoef(x)
         # print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         corr = - torch.square(corr_matrix[0][1])
@@ -408,8 +408,8 @@ class squared_correlation(torch.nn.Module):
         return corr
 
     def check_correctness(self, real, pred):
-        if real.dim() == 0:
-            raise Exception(f"Real:{real}\n and pred:{pred}\n")
+        # if real.dim() == 0:
+        #     raise Exception(f"Real:{real}\n and pred:{pred}\n")
 
         if real.dim() != 0 and len(real) == 0:
             return real, pred
