@@ -399,7 +399,8 @@ class squared_correlation(torch.nn.Module):
 
         # could happen in conditioning case
         if real.dim() == 0:
-            warnings.warn(colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red"))
+            warning = colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red")
+            warnings.warn(warning)
             return 0
 
         real, pred = self.check_correctness(real=real, pred=pred)

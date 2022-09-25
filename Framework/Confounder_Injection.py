@@ -542,6 +542,7 @@ class create_dataloader:
         self.confounder_labels = confounder_labels
         self.batch_size = batch_size
         self.confounder_features = confounder_features
+        assert(len(x)==len(y)==len(domain_labels)==len(confounder_labels)==len(confounder_features))
 
 
     # def split_dataset(self, dataset):
@@ -915,9 +916,7 @@ class train:
     def check_for_nan(self, array):
         for tensor in array:
             if torch.isnan(tensor).any():
-                print("Array with NAN values:")
-                print(array)
-                raise Exception("nan in input data detected")
+                raise Exception(f"nan in input data detected\narray with nan:{array}\n")
 
     def run(self, train_dataloader, optimizer):
         if self.model.adversarial:
@@ -1216,7 +1215,7 @@ class confounder:
 
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=True, step=epoch)
 
-                elif use_wandb and (epoch % 10) == 0:
+                elif use_wandb:# and (epoch % 10) == 0:
                     # save model parameters and upload to wandb
                     # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
                     # torch.save(self.model.state_dict(), path)

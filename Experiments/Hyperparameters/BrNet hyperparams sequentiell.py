@@ -125,7 +125,7 @@ def run_tune(search_space):
             {
                 "lr":search_space["lr"],
                 "weight_decay": search_space["weight_decay"],
-                "batch_size": search_space["batch_size"],
+                "batch_size": [64,128,256],
                 "alpha": search_space["alpha"],
                 # "alpha2": search_space["alpha2"],
             },
