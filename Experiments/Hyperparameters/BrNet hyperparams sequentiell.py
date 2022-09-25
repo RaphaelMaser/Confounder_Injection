@@ -145,11 +145,10 @@ def run_tune(search_space):
 
     stopper = tune.stopper.MaximumIterationStopper(epochs)
 
-    tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
+    tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=2, progress_reporter=reporter, scheduler=scheduler,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              #max_concurrent_trials=max_concurrent_trials,
              local_dir=local_dir,
-             keep_checkpoints_num=2,
              stop=stopper
     )
     #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
