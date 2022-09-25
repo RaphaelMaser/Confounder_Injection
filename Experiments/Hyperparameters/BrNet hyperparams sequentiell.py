@@ -86,6 +86,13 @@ finetuning = args.finetuning
 # if finetuning==1:
 #     search_space["batch_size"] = target_domain_samples
 
+# class wandb_stopper(tune.Stopper):
+#     def __init__(self):
+#         pass
+#     def __call__(self, trial_id, result):
+#         if result["training_iteration"] >= 100:
+#             return True
+
 #@wandb_mixin
 def train_tune(config, checkpoint_dir=None):
     #print(f"--- RESSOURCES ---\n{ray.cluster_resources()}")
@@ -117,6 +124,7 @@ def train_tune(config, checkpoint_dir=None):
 
 def run_tune(search_space):
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=600*3)
+
     if pbt:
         scheduler = tune.schedulers.PopulationBasedTraining(
             time_attr="training_iteration",
@@ -135,10 +143,14 @@ def run_tune(search_space):
     else:
         scheduler = None
 
+    stopper = tune.stopper.MaximumIterationStopper(epochs)
+
     tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              #max_concurrent_trials=max_concurrent_trials,
-             local_dir=local_dir
+             local_dir=local_dir,
+             keep_checkpoints=2,
+             stop=stopper
     )
     #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
     # remove ray_results folder

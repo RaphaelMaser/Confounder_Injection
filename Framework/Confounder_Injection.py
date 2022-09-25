@@ -1245,14 +1245,7 @@ class confounder:
                     tune.report(mean_accuracy=classification_accuracy)
 
         if use_wandb:
-            # save model parameters and upload to wandb
-            path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-            torch.save(self.model.state_dict(), path)
-            wandb.save(path)
-
-            #wandb.log()
-            wandb.config.update({"trained_model": self.model}, allow_val_change=True)
-            wandb.finish()
+            self.wandb_finish_and_upload_model()
 
             if mode == "offline" and wandb_init["dir"] == None:
                 time.sleep(10)
@@ -1271,6 +1264,17 @@ class confounder:
             print("Training took ",time.time() - delta_t, "s")
 
         return self.results
+
+    def wandb_finish_and_upload_model(self):
+        # save model parameters and upload to wandb
+        path = os.path.join(os.getcwd(), str(wandb.config["random"]) + ".pt")
+        torch.save(self.model.state_dict(), path)
+        wandb.save(path)
+
+        #wandb.log()
+        wandb.config.update({"trained_model": self.model}, allow_val_change=True)
+        wandb.finish()
+        return
 
     def test(self, batch_size=1):
         assert(len(self.test_x) == 1)
