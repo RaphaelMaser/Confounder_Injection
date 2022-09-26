@@ -1093,7 +1093,7 @@ class confounder:
 
         if session.get_checkpoint():
             with session.get_checkpoint().as_directory() as checkpoint_dir:
-                state = torch.load(checkpoint_dir)
+                state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
                 self.model.load_state_dict(state["model_state_dict"])
                 start_epoch = state["step"]
 
