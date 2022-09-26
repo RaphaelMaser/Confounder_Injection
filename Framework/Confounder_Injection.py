@@ -1254,9 +1254,9 @@ class confounder:
 
         if use_wandb:
             # save model parameters and upload to wandb
-            path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-            torch.save(self.model.state_dict(), working_directory)
-            wandb.save(working_directory)
+            path = os.path.join(working_directory, str(config["random"]) + ".pt")
+            torch.save(self.model.state_dict(), path)
+            wandb.save(path)
 
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
