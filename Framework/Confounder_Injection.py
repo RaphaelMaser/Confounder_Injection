@@ -1227,7 +1227,7 @@ class confounder:
                         # PBT needs checkpointing
                         with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
                             # create checkpoint file
-                            path = os.path.join(checkpoint_dir,"checkpoint")
+                            path = os.path.join(checkpoint_dir,"checkpoint.pt")
                             # save state to checkpoint file
                             torch.save(
                                 {
