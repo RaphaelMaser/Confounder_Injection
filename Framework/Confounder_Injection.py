@@ -1250,7 +1250,7 @@ class confounder:
                         )
 
                     # report to tune
-                    tune.report(mean_accuracy=classification_accuracy)
+                    tune.report(mean_accuracy=classification_accuracy, epoch=epoch)
 
         if use_wandb:
             # save model parameters and upload to wandb
