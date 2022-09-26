@@ -1163,7 +1163,7 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"), mode=mode, dir=wandb_init["dir"])
+            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"), mode=mode, dir=working_directory)
             time.sleep(5)
             config = wandb.config
 
@@ -1255,19 +1255,20 @@ class confounder:
         if use_wandb:
             # save model parameters and upload to wandb
             path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-            torch.save(self.model.state_dict(), path)
-            wandb.save(path)
+            torch.save(self.model.state_dict(), working_directory)
+            wandb.save(working_directory)
 
             #wandb.log()
             wandb.config.update({"trained_model": self.model}, allow_val_change=True)
             wandb.finish()
 
-            if mode == "offline" and wandb_init["dir"] == None:
-                time.sleep(10)
+            if mode == "offline":# and wandb_init["dir"] == None:
+                t = time.time()
                 print(f"--- syncing ---\n"
                       f"current_dir={working_directory}\n"
                       f"files={working_directory}")
-                os.system(f"conda run -n confounder_3.10 wandb sync \"{working_directory}\" --sync-all")
+                os.system(f"conda run -n confounder_3.10 wandb sync --sync-all")
+                print(f"--- took {time.time()-t}s")
 
 
         self.results = pd.DataFrame(results)
