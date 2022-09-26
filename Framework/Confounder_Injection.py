@@ -27,6 +27,7 @@ import pandas as pd
 import ipywidgets as widgets
 from ipywidgets import interact, fixed
 from ray import tune
+from ray.air import session
 from ray.tune.schedulers import ASHAScheduler
 import wandb
 import datetime
@@ -1088,6 +1089,13 @@ class confounder:
         self.model = copy.deepcopy(model)
         mode = "offline"
         working_directory = os.getcwd()
+        start_epoch = 1
+
+        if session.get_checkpoint():
+            with session.get_checkpoint().to_directory() as checkpoint_dir:
+                state = torch.load(checkpoint_dir)
+                self.model.load_state_dict(state["model_state_dict"])
+                start_epoch = state["step"]
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -1192,7 +1200,7 @@ class confounder:
         for cf_var in range(0,len(self.index)):
             test_dataloader.append(create_dataloader(self.test_x[cf_var], self.test_y[cf_var], domain_labels=self.test_domain_labels[cf_var], confounder_labels=self.test_confounder_labels[cf_var], batch_size=config["batch_size"], confounder_features=self.test_confounder_features[cf_var]).get_dataloader())
 
-        for epoch in range(1, epochs+1):
+        for epoch in range(start_epoch, epochs+1):
             # load new results
 
             t = train(self.model, device)
@@ -1208,46 +1216,27 @@ class confounder:
                 results["confounder_accuracy"].append(confounder_accuracy)
 
                 if use_wandb and (epoch % epochs) == 0:
-                    # save model parameters and upload to wandb
-                    # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-                    # torch.save(self.model.state_dict(), path)
-                    # wandb.save(path)
-
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=True, step=epoch)
 
-                elif use_wandb:# and (epoch % 10) == 0:
-                    # save model parameters and upload to wandb
-                    # path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-                    # torch.save(self.model.state_dict(), path)
-                    # wandb.save(path)
-
+                elif use_wandb:
                     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=False, step=epoch)
 
-                # if wandb_init != None and ((i+1) % 10) == 0:
-                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":i+1}, commit=True, step=i)
-
-                # TODO experimental
-                # if use_wandb and (epoch % 10) == 0:
-                #     path = os.path.join(os.getcwd(), str(config["random"]) + ".pt")
-                #     torch.save(self.model.state_dict(), path)
-                #     wandb.save(path)
-
                 # register accuracy in use_tune
-                if use_tune and (epoch % 10) == 0:
-                    # PBT needs checkpointing
-                    with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
-
-                        # create checkpoint file
-                        path = os.path.join(checkpoint_dir,"checkpoint")
-                        # save state to checkpoint file
-                        torch.save(
-                            {
-                                "step": epoch,
-                                "model_state_dict":model.state_dict(),
-                                "mean_accuracy":classification_accuracy
-                            },
-                            path,
-                        )
+                if use_tune:
+                    if epoch % 10 == 0:
+                        # PBT needs checkpointing
+                        with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
+                            # create checkpoint file
+                            path = os.path.join(checkpoint_dir,"checkpoint")
+                            # save state to checkpoint file
+                            torch.save(
+                                {
+                                    "step": epoch,
+                                    "model_state_dict":model.state_dict(),
+                                    "mean_accuracy":classification_accuracy
+                                },
+                                path,
+                            )
 
                     # report to tune
                     tune.report(mean_accuracy=classification_accuracy, epoch=epoch)
