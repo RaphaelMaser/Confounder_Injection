@@ -1183,7 +1183,8 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, resume="allow", id=os.path.basename(working_directory), entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=False, settings=wandb.Settings(start_method="fork"), mode=mode, dir=working_directory)
+            # id=os.path.basename(working_directory),
+            wandb.init(name=name, resume=True, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=False, settings=wandb.Settings(start_method="fork"), mode=mode, dir=working_directory)
             time.sleep(5)
             config = wandb.config
 
