@@ -36,6 +36,7 @@ import datetime
 import ray
 import os
 import pickle
+from termcolor import colored
 
 from ray.tune.integration.wandb import (
     WandbTrainableMixin,
@@ -1093,6 +1094,7 @@ class confounder:
         working_directory = os.getcwd()
         start_epoch = 1
         os.environ['WANDB_MODE'] = mode
+        os.environ['WANDB_SILENT'] = "true"
 
         # for f in os.listdir(working_directory):
         #     os.remove(os.path.join(working_directory,f))
@@ -1100,7 +1102,7 @@ class confounder:
             shutil.rmtree(os.path.join(working_directory,"wandb"))
 
         if session.get_checkpoint():
-            warnings.warn("CHECKPOINT FOUND")
+            warnings.warn(colored("CHECKPOINT FOUND","red"))
             with session.get_checkpoint().as_directory() as checkpoint_dir:
                 state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
                 self.model.load_state_dict(state["model_state_dict"])
@@ -1238,7 +1240,8 @@ class confounder:
                         # PBT needs checkpointing
                         # create checkpoint file
                         path = os.path.join(working_directory,"model")
-                        # save state to checkpoint file
+                        os.makedirs(path, exist_ok=True)
+                    # save state to checkpoint file
                         torch.save(
                             {
                                 "step": epoch,
