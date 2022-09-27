@@ -9,6 +9,7 @@
 127.0.0.1:8000:/?token=417c65a720ebe817507356246b10f9a925d3b89cbb60ed50
 '''
 import copy
+import shutil
 import sys
 
 import numpy as np
@@ -1095,7 +1096,7 @@ class confounder:
         # for f in os.listdir(working_directory):
         #     os.remove(os.path.join(working_directory,f))
         if os.path.exists(os.path.join(working_directory,"wandb")):
-            os.remove(os.path.join(working_directory,"wandb"))
+            shutil.rmtree(os.path.join(working_directory,"wandb"))
 
         if session.get_checkpoint():
             warnings.warn("CHECKPOINT FOUND")
@@ -1246,7 +1247,7 @@ class confounder:
                             )
 
                     # report to tune
-                    tune.report(mean_accuracy=classification_accuracy, epoch=epoch)
+                    session.report(metrics={"mean_accuracy":classification_accuracy, "epoch":epoch})
 
         if use_wandb:
             # save model parameters and upload to wandb
