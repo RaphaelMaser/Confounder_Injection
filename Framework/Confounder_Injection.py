@@ -1092,10 +1092,12 @@ class confounder:
         start_epoch = 1
 
         if session.get_checkpoint():
+            warnings.warn("CHECKPOINT FOUND")
             with session.get_checkpoint().as_directory() as checkpoint_dir:
                 state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
                 self.model.load_state_dict(state["model_state_dict"])
                 start_epoch = state["step"]
+                warnings.warn(f"NEW EPOCH:{start_epoch}")
 
         if device == "cuda":
             if torch.cuda.is_available():
