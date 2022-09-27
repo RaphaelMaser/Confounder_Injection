@@ -1090,6 +1090,7 @@ class confounder:
         mode = "offline"
         working_directory = os.getcwd()
         start_epoch = 1
+        os.environ['WANDB_MODE'] = mode
 
         if session.get_checkpoint():
             warnings.warn("CHECKPOINT FOUND")
@@ -1217,11 +1218,10 @@ class confounder:
                 results["classification_accuracy"].append(classification_accuracy)
                 results["confounder_accuracy"].append(confounder_accuracy)
 
-                if use_wandb and (epoch % epochs) == 0:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=True, step=epoch)
+                wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, step=epoch)
 
-                elif use_wandb:
-                    wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=False, step=epoch)
+                # elif use_wandb:
+                #     wandb.log({"classification_accuracy":classification_accuracy, "confounder_accuracy":confounder_accuracy, "confounder_strength":self.index[cf_var], "epoch":epoch}, commit=False, step=epoch)
 
                 # register accuracy in use_tune
                 if use_tune:
