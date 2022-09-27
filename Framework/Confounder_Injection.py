@@ -1098,16 +1098,16 @@ class confounder:
 
         # for f in os.listdir(working_directory):
         #     os.remove(os.path.join(working_directory,f))
-        if os.path.exists(os.path.join(working_directory,"wandb")):
-            shutil.rmtree(os.path.join(working_directory,"wandb"))
+        # if os.path.exists(os.path.join(working_directory,"wandb")):
+        #     shutil.rmtree(os.path.join(working_directory,"wandb"))
 
         if session.get_checkpoint():
-            warnings.warn(colored("CHECKPOINT FOUND","red"))
+            #warnings.warn(colored("CHECKPOINT FOUND","red"))
             with session.get_checkpoint().as_directory() as checkpoint_dir:
                 state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
                 self.model.load_state_dict(state["model_state_dict"])
                 start_epoch = state["step"]
-                warnings.warn(f"NEW EPOCH:{start_epoch}")
+                #warnings.warn(f"NEW EPOCH:{start_epoch}")
 
         if device == "cuda":
             if torch.cuda.is_available():
@@ -1183,7 +1183,7 @@ class confounder:
             config["adversary2_mode"] = self.model.mode2
 
         if use_wandb:
-            wandb.init(name=name, entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=True, settings=wandb.Settings(start_method="fork"), mode=mode, dir=working_directory)
+            wandb.init(name=name, resume="allow", id=os.path.basename(working_directory), entity="confounder_in_ml", config=config, project=wandb_init["project"], group=wandb_init["group"], reinit=False, settings=wandb.Settings(start_method="fork"), mode=mode, dir=working_directory)
             time.sleep(5)
             config = wandb.config
 
@@ -1271,6 +1271,8 @@ class confounder:
                       f"current_dir={working_directory}\n"
                       f"files={working_directory}")
                 os.system(f"conda run -n confounder_3.10 wandb sync --sync-all")
+                #wandb_path = os.path.join("wandb",f"{wandb.run.id}")
+                #os.system(f"conda run -n confounder_3.10 wandb sync --id {wandb_path}")
                 print(f"--- took {time.time()-t}s")
 
 
