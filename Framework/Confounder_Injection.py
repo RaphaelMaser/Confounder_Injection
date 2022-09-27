@@ -1092,6 +1092,11 @@ class confounder:
         start_epoch = 1
         os.environ['WANDB_MODE'] = mode
 
+        # for f in os.listdir(working_directory):
+        #     os.remove(os.path.join(working_directory,f))
+        if os.path.exists(os.path.join(working_directory,"wandb")):
+            os.remove(os.path.join(working_directory,"wandb"))
+
         if session.get_checkpoint():
             warnings.warn("CHECKPOINT FOUND")
             with session.get_checkpoint().as_directory() as checkpoint_dir:
