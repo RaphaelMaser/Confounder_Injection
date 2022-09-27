@@ -145,9 +145,11 @@ def run_tune(search_space):
 
     stopper = tune.stopper.MaximumIterationStopper(epochs)
 
-    tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=3, progress_reporter=reporter, scheduler=scheduler,
+    tune.run(train_tune, #metric="mean_accuracy",
+             num_samples=samples, config=search_space, keep_checkpoints_num=3, progress_reporter=reporter, scheduler=scheduler,
              resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
              #max_concurrent_trials=max_concurrent_trials,
+             sync_config=ray.tune.SyncConfig(syncer=None),
              local_dir=local_dir,
              #stop=stopper
     )

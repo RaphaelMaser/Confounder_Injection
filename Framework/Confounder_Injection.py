@@ -29,6 +29,7 @@ import ipywidgets as widgets
 from ipywidgets import interact, fixed
 from ray import tune
 from ray.air import session
+from ray.air.checkpoint import Checkpoint
 from ray.tune.schedulers import ASHAScheduler
 import wandb
 import datetime
@@ -1231,23 +1232,25 @@ class confounder:
 
                 # register accuracy in use_tune
                 if use_tune:
+                    checkpoint = None
+
                     if epoch % 10 == 0:
                         # PBT needs checkpointing
-                        with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
-                            # create checkpoint file
-                            path = os.path.join(checkpoint_dir,"checkpoint.pt")
-                            # save state to checkpoint file
-                            torch.save(
-                                {
-                                    "step": epoch,
-                                    "model_state_dict":model.state_dict(),
-                                    "mean_accuracy":classification_accuracy
-                                },
-                                path,
-                            )
+                        # create checkpoint file
+                        path = os.path.join(working_directory,"model")
+                        # save state to checkpoint file
+                        torch.save(
+                            {
+                                "step": epoch,
+                                "model_state_dict":model.state_dict(),
+                                "mean_accuracy":classification_accuracy
+                            },
+                            os.path.join(path,"checkpoint.pt"),
+                        )
+                        checkpoint = Checkpoint.from_directory(path)
 
                     # report to tune
-                    session.report(metrics={"mean_accuracy":classification_accuracy, "epoch":epoch})
+                    session.report(metrics={"mean_accuracy":classification_accuracy, "epoch":epoch}, checkpoint=checkpoint)
 
         if use_wandb:
             # save model parameters and upload to wandb
