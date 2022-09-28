@@ -1100,11 +1100,12 @@ class confounder:
         #     os.remove(os.path.join(working_directory,f))
         # if os.path.exists(os.path.join(working_directory,"wandb")):
         #     shutil.rmtree(os.path.join(working_directory,"wandb"))
-
-        if session.get_checkpoint() and wandb_init.get("pbt"):
+        checkpoint = session.get_checkpoint()
+        if checkpoint and wandb_init.get("pbt"):
             #warnings.warn(colored("CHECKPOINT FOUND","red"))
-            with session.get_checkpoint().as_directory() as checkpoint_dir:
-                state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
+            with checkpoint.as_directory() as checkpoint_dir:
+                #state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
+                state = torch.load(checkpoint_dir)
                 self.model.load_state_dict(state["model_state_dict"])
                 start_epoch = state["step"]
                 #warnings.warn(f"NEW EPOCH:{start_epoch}")
@@ -1241,8 +1242,9 @@ class confounder:
                     if epoch % 10 == 0 and wandb_init.get("pbt"):
                         # PBT needs checkpointing
                         # create checkpoint file
-                        path = os.path.join(working_directory,"model")
-                        os.makedirs(path, exist_ok=True)
+                        #path = os.path.join(working_directory,"model")
+                        path = "model/checkpoint.pt"
+                        #os.makedirs(path, exist_ok=True)
                     # save state to checkpoint file
                         torch.save(
                             {
@@ -1250,7 +1252,8 @@ class confounder:
                                 "model_state_dict":model.state_dict(),
                                 "mean_accuracy":classification_accuracy
                             },
-                            os.path.join(path,"checkpoint.pt"),
+                            #os.path.join(path,"checkpoint.pt"),
+                            path
                         )
                         checkpoint = Checkpoint.from_directory(path)
 
