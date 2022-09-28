@@ -165,6 +165,7 @@ def run_tune(search_space):
                        ),
                        run_config=air.RunConfig(
                            #resources = {"cpu": cpus_per_trial},
+                           local_dir=local_dir,
                            sync_config=ray.tune.SyncConfig(syncer=None),
                        ),
                        param_space=search_space
