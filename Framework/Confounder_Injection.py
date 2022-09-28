@@ -1101,7 +1101,7 @@ class confounder:
         # if os.path.exists(os.path.join(working_directory,"wandb")):
         #     shutil.rmtree(os.path.join(working_directory,"wandb"))
 
-        if session.get_checkpoint():
+        if session.get_checkpoint() and wandb_init.get("pbt"):
             #warnings.warn(colored("CHECKPOINT FOUND","red"))
             with session.get_checkpoint().as_directory() as checkpoint_dir:
                 state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
@@ -1238,7 +1238,7 @@ class confounder:
                 if use_tune:
                     checkpoint = None
 
-                    if epoch % 10 == 0:
+                    if epoch % 10 == 0 and wandb_init.get("pbt"):
                         # PBT needs checkpointing
                         # create checkpoint file
                         path = os.path.join(working_directory,"model")

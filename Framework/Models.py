@@ -397,7 +397,7 @@ class squared_correlation(torch.nn.Module):
         # print(f"\n\n pred is {pred}\n\n")
         # print(f"\n\n real is {real}\n\n")
 
-        # could happen in conditioning case
+        # could happen in conditioning case TODO produce some problems
         if real.dim() == 0:
             warning = colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red")
             warnings.warn(warning)
