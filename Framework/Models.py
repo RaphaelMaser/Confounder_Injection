@@ -401,6 +401,7 @@ class squared_correlation(torch.nn.Module):
         if real.dim() == 0:
             warning = colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red")
             warnings.warn(warning)
+            raise Exception(colored(f"Real dim was zero","red"))
             return 0
 
         real, pred = self.check_correctness(real=real, pred=pred)
