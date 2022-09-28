@@ -10,6 +10,7 @@ importlib.reload(Models)
 importlib.reload(CI)
 import torch
 from ray import tune
+from ray import air
 import ray
 from ray.tune import CLIReporter
 import datetime
@@ -30,8 +31,11 @@ cpus_per_trial = 1
 #max_concurrent_trials = 32
 #ray.init(num_cpus=128)
 ray.init()
-local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-#local_dir = os.path.join(os.getcwd(),"ray_results")
+if os.path.exists("/mnt/lscratch"):
+    local_dir = "/mnt/lscratch/users/rmaser/ray_results"
+else:
+    local_dir = os.path.join(os.getcwd(),"ray_results")
+
 os.path.join(local_dir, f"{np.random.randint(sys.maxsize)}")
 
 search_space = {
@@ -145,17 +149,29 @@ def run_tune(search_space):
 
     stopper = tune.stopper.MaximumIterationStopper(epochs)
 
-    tune.run(train_tune, #metric="mean_accuracy",
-             num_samples=samples, config=search_space, 
-             #keep_checkpoints_num=6, 
-             #checkpoint_score_attr="mean_accuracy",
-             progress_reporter=reporter, scheduler=scheduler,
-             resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
-             #max_concurrent_trials=max_concurrent_trials,
-             sync_config=ray.tune.SyncConfig(syncer=None),
-             local_dir=local_dir,
-             #stop=stopper
-    )
+    # tune.run(train_tune, #metric="mean_accuracy",
+    #          num_samples=samples, config=search_space,
+    #          #keep_checkpoints_num=6,
+    #          #checkpoint_score_attr="mean_accuracy",
+    #          progress_reporter=reporter, scheduler=scheduler,
+    #          resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
+    #          #max_concurrent_trials=max_concurrent_trials,
+    #          sync_config=ray.tune.SyncConfig(syncer=None),
+    #          local_dir=local_dir,
+    #          #stop=stopper
+    # )
+    tuner = tune.Tuner(train_tune,
+                       tune_config=tune.TuneConfig(
+                           num_samples = samples,
+                           scheduler=scheduler,
+                       ),
+                       run_config=air.RunConfig(
+                           #resources = {"cpu": cpus_per_trial},
+                           sync_config=ray.tune.SyncConfig(syncer=None),
+                       ),
+                       param_space=search_space
+                       )
+    tuner.fit()
     #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
     # remove ray_results folder
     #time.sleep(20)
