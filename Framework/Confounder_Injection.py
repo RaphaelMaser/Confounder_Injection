@@ -1086,7 +1086,7 @@ class confounder:
     def inject_confounder(self, type=None):
         pass
 
-    def train(self, use_tune=False, use_wandb=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None):
+    def train(self, use_tune=False, use_wandb=False, wandb_sweep=False, model=Models.NeuralNetwork(32 * 32), epochs=1, device ="cuda", optimizer = None, hyper_params=None, wandb_init=None, checkpoint_dir=None):
         self.reset_seed()
         name = model.get_name()
         self.model = copy.deepcopy(model)
@@ -1096,18 +1096,14 @@ class confounder:
         os.environ['WANDB_MODE'] = mode
         os.environ['WANDB_SILENT'] = "true"
 
-        # for f in os.listdir(working_directory):
-        #     os.remove(os.path.join(working_directory,f))
-        # if os.path.exists(os.path.join(working_directory,"wandb")):
-        #     shutil.rmtree(os.path.join(working_directory,"wandb"))
-        checkpoint = session.get_checkpoint()
-        if checkpoint and wandb_init.get("pbt"):
+        #checkpoint = session.get_checkpoint()
+        if checkpoint_dir and wandb_init.get("pbt"):
             #warnings.warn(colored("CHECKPOINT FOUND","red"))
-            with checkpoint.as_directory() as checkpoint_dir:
-                state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
-                self.model.load_state_dict(state["model_state_dict"])
-                start_epoch = state["step"]
-                #warnings.warn(f"NEW EPOCH:{start_epoch}")
+            #with checkpoint.as_directory() as checkpoint_dir:
+            state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
+            self.model.load_state_dict(state["model_state_dict"])
+            start_epoch = state["step"]
+            #warnings.warn(f"NEW EPOCH:{start_epoch}")
 
         if device == "cuda":
             if torch.cuda.is_available():
