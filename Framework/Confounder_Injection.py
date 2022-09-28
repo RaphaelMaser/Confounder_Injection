@@ -1104,8 +1104,7 @@ class confounder:
         if checkpoint and wandb_init.get("pbt"):
             #warnings.warn(colored("CHECKPOINT FOUND","red"))
             with checkpoint.as_directory() as checkpoint_dir:
-                #state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
-                state = torch.load(checkpoint_dir)
+                state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
                 self.model.load_state_dict(state["model_state_dict"])
                 start_epoch = state["step"]
                 #warnings.warn(f"NEW EPOCH:{start_epoch}")
@@ -1243,8 +1242,8 @@ class confounder:
                         # PBT needs checkpointing
                         # create checkpoint file
                         #path = os.path.join(working_directory,"model")
-                        path = "model/checkpoint.pt"
-                        #os.makedirs(path, exist_ok=True)
+                        path = "model"
+                        os.makedirs(path, exist_ok=True)
                     # save state to checkpoint file
                         torch.save(
                             {
@@ -1252,8 +1251,7 @@ class confounder:
                                 "model_state_dict":model.state_dict(),
                                 "mean_accuracy":classification_accuracy
                             },
-                            #os.path.join(path,"checkpoint.pt"),
-                            path
+                            os.path.join(path,"checkpoint.pt"),
                         )
                         checkpoint = Checkpoint.from_directory(path)
 
