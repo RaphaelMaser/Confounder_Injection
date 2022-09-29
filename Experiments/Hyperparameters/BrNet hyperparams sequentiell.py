@@ -140,7 +140,8 @@ def run_tune(search_space):
                 # "alpha2": search_space["alpha2"],
             },
             metric="mean_accuracy",
-            mode="max"
+            mode="max",
+            synch=False
         )
     else:
         scheduler = None
@@ -168,7 +169,10 @@ def run_tune(search_space):
                            local_dir=local_dir,
                            sync_config=ray.tune.SyncConfig(syncer=None),
                        ),
-                       param_space=search_space
+                       checkpoint_config=air.CheckpointConfig(
+                           num_to_keep = 1,
+                       ),
+                        param_space=search_space,
                        )
     tuner.fit()
     #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
