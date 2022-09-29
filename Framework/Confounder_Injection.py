@@ -1198,11 +1198,13 @@ class confounder:
         if hyper_params == None:
             if not wandb_sweep:
                 raise AssertionError("Choose some hyperparameter for the optimizer")
-        # else:
-        #     if not 'weight_decay' in config:
-        #         config['weight_decay'] = 0
 
+        # create optimizer and load state from checkpoint if available
         model_optimizer = optimizer(params=self.model.parameters(), lr=config['lr'], weight_decay=config["weight_decay"])
+        if checkpoint_dir and wandb_init.get("pbt"):
+            state = torch.load(os.path.join(checkpoint_dir,"checkpoint.pt"))
+            model_optimizer.load_state_dict(state["optimizer_state_dict"])
+
         train_dataloader = create_dataloader(self.train_x[set], self.train_y[set], domain_labels=self.train_domain_labels[set], confounder_labels=self.train_confounder_labels[set], batch_size=config["batch_size"], confounder_features=self.train_confounder_features[set]).get_dataloader()
 
         test_dataloader = []
@@ -1244,8 +1246,9 @@ class confounder:
                         torch.save(
                             {
                                 "step": epoch,
+                                "mean_accuracy":classification_accuracy,
                                 "model_state_dict":model.state_dict(),
-                                "mean_accuracy":classification_accuracy
+                                "optimizer_state_dict":model_optimizer.state_dict()
                             },
                             os.path.join(path,"checkpoint.pt"),
                         )
