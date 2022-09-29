@@ -168,9 +168,9 @@ def run_tune(search_space):
                            #resources = {"cpu": cpus_per_trial},
                            local_dir=local_dir,
                            sync_config=ray.tune.SyncConfig(syncer=None),
-                       ),
-                       checkpoint_config=air.CheckpointConfig(
-                           num_to_keep = 1,
+                           checkpoint_config=air.CheckpointConfig(
+                               num_to_keep = 1,
+                           ),
                        ),
                         param_space=search_space,
                        )
