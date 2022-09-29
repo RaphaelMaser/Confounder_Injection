@@ -21,7 +21,7 @@ import time
 import shutil
 
 params = [
-    [[1, 4], [3, 6]], # real feature
+    [[1, 3], [4, 6]], # real feature
     [[10, 12], [20, 22]] # confounder_labels
 ]
 
