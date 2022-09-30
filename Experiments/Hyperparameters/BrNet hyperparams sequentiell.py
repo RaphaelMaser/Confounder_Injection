@@ -41,7 +41,7 @@ search_space = {
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
     "alpha":tune.uniform(0,1),
-    "alpha2":tune.uniform(0,1),
+    "alpha2":1,#tune.uniform(0,1),
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-6,1e-1),
     "wandb" : {
@@ -65,6 +65,7 @@ parser.add_argument('-pbt', action="store", type=int, dest="pbt", help="Define t
 parser.add_argument('-epochs', action="store", type=int, dest="epochs", help="Define the scheduler")
 parser.add_argument('-samples', action="store", type=int, dest="samples", help="Define the scheduler")
 parser.add_argument('-finetuning', action="store", type=int, dest="finetuning", help="Enable finetuning?")
+parser.add_argument('-test_samples', action="store", type=int, dest="test_samples", help="Define the scheduler")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
 parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
@@ -84,6 +85,7 @@ samples = args.samples
 pbt = args.pbt
 epochs = args.epochs
 finetuning = args.finetuning
+test_samples = args.test_samples
 
 # if finetuning==1:
 #     search_space["batch_size"] = target_domain_samples
@@ -110,17 +112,17 @@ def train_tune(config, checkpoint_dir=None):
     # pre-train model on the confounded dataset and then finetune it on the small dataset
     if finetuning:
         c_ft = CI.confounder()
-        c_ft.generate_data(mode="br_net", samples=512, target_domain_samples=0, test_samples=512, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c_ft.generate_data(mode="br_net", samples=512, target_domain_samples=0, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
         c_ft.train(use_tune=False, use_wandb=False, epochs=int(config["epochs"]/2), model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
         c = CI.confounder()
-        c.generate_data(mode="br_net", samples=0, target_domain_samples=target_domain_samples, test_samples=512, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.generate_data(mode="br_net", samples=0, target_domain_samples=target_domain_samples, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
         c.train(use_tune=True, use_wandb=True, epochs=int(config["epochs"]/2), model = c_ft.model, optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], checkpoint_dir=checkpoint_dir)
 
     # standard routine
     else:
         c = CI.confounder()
-        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, test_samples=512, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
         c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], checkpoint_dir=checkpoint_dir)
 
 
@@ -136,7 +138,7 @@ def run_tune(search_space):
                 "lr":search_space["lr"],
                 "weight_decay": search_space["weight_decay"],
                 "batch_size": [64,128,256],
-                "alpha": search_space["alpha"],
+                #"alpha": search_space["alpha"],
                 # "alpha2": search_space["alpha2"],
             },
             metric="mean_accuracy",
