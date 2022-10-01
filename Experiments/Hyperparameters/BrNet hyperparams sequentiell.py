@@ -41,7 +41,7 @@ search_space = {
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
     "alpha":tune.uniform(0,1),
-    "alpha2":1,#tune.uniform(0,1),
+    "alpha2":tune.uniform(0,1),
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-6,1e-1),
     "wandb" : {
@@ -138,7 +138,7 @@ def run_tune(search_space):
                 "lr":search_space["lr"],
                 "weight_decay": search_space["weight_decay"],
                 "batch_size": [64,128,256],
-                #"alpha": search_space["alpha"],
+                "alpha": search_space["alpha"],
                 # "alpha2": search_space["alpha2"],
             },
             metric="mean_accuracy",
