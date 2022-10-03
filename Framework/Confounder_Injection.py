@@ -235,7 +235,7 @@ class wandb_sync:
             if project==None:
                 project = "BrNet on br_net data"
 
-            api = wandb.Api()
+            api = wandb.Api(api_key="10dd47062950e00af63d29317ead0331316732ff")
             runs = api.runs(entity + "/" + project, filters=filters)
 
             history_list, config_list, name_list = [], [], []
@@ -1447,21 +1447,6 @@ class helper():
 
     @staticmethod
     def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target, force_reload=False, seed=None, load_complete_model=True, experiment=0, finetuning=None):
-        print(f"Experiment {experiment}:"
-              f"\n-- batch_date={batch_date}"
-              f"\n-- test_confounding={test_confounding}"
-              f"\n-- target_domain_samples={target_domain_samples}"
-              f"\n-- target_domain_confounding={target_domain_confounding}"
-              f"\n-- de_correlate_confounder_target={de_correlate_confounder_target}")
-
-        params = [
-            [[1, 4], [3, 6]], # real feature
-            [[10, 12], [20, 22]] # confounder_labels
-        ]
-
-        c = confounder(seed=seed)
-        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[target_domain_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_target, params=params)
-
         filters = {
             "summary_metrics.confounder_strength": test_confounding,
             "config.target_domain_samples": target_domain_samples,
@@ -1471,8 +1456,18 @@ class helper():
         }
 
         if finetuning != None:
-            print(f"-- finetuning={finetuning}")
             filters["config.finetuning"] = finetuning
+
+        print(f"Experiment {experiment}")
+        for f in filters: print(f"- {f}={filters[f]}")
+
+        params = [
+            [[1, 4], [3, 6]], # real feature
+            [[10, 12], [20, 22]] # confounder_labels
+        ]
+
+        c = confounder(seed=seed)
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[target_domain_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_target, params=params)
 
         df = c.test_best_networks(filters=filters, force_reload=force_reload, load_complete_model=load_complete_model, experiment=experiment)
         return df
