@@ -136,10 +136,9 @@ def run_tune(search_space):
             hyperparam_mutations=
             {
                 "lr":search_space["lr"],
-                "weight_decay": search_space["weight_decay"],
+                #"weight_decay": search_space["weight_decay"],
                 "batch_size": [64,128,256],
-                "alpha": search_space["alpha"],
-                # "alpha2": search_space["alpha2"],
+                #"alpha": search_space["alpha"],
             },
             metric="mean_accuracy",
             mode="max",
