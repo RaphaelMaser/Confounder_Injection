@@ -43,7 +43,7 @@ search_space = {
     "alpha":1,#tune.uniform(0,1),
     #"alpha2":tune.uniform(0,1),
     "lr": tune.loguniform(1e-5,1e-1),
-    "weight_decay": 0,#tune.loguniform(1e-6,1e-1),
+    "weight_decay": tune.loguniform(1e-6,1e-1),
     "wandb" : {
         "entity": "confounder_in_ml",
         "project": "Hyperparameters",
@@ -136,7 +136,7 @@ def run_tune(search_space):
             hyperparam_mutations=
             {
                 "lr":search_space["lr"],
-                #"weight_decay": search_space["weight_decay"],
+                "weight_decay": search_space["weight_decay"],
                 "batch_size": [64,128,256],
                 #"alpha": search_space["alpha"],
             },
