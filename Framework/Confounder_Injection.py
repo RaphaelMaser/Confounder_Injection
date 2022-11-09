@@ -1361,6 +1361,7 @@ class confounder:
             for i in test_image_iteration:
                 x = self.test_x[i]
                 p.images([x[0][0], x[int(len(x)/2)+1][0]], gray=True, title=f"Test-images (iteration {i})", model_name=model_name)
+                return [x[0][0], x[int(len(x)/2)+1][0]]
 
         if saliency:
             for i in saliency_iteration:
