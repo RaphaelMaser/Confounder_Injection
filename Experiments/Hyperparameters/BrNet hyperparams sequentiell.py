@@ -31,8 +31,8 @@ cpus_per_trial = 1
 #max_concurrent_trials = 32
 #ray.init(num_cpus=128)
 ray.init()
-local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-#local_dir = os.path.join(os.getcwd(),"ray_results")
+#local_dir = "/mnt/lscratch/users/rmaser/ray_results"
+local_dir = os.path.join(os.getcwd(),"ray_results")
 
 os.path.join(local_dir, f"{np.random.randint(sys.maxsize)}")
 
