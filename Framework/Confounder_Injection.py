@@ -87,13 +87,13 @@ class plot:
 
         class_max_acc = classification_accuracy.max(axis='rows')
         class_mean_acc = classification_accuracy.mean(axis='rows')
-        if ideal:
-            #ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
-            ideal_df = pd.DataFrame({"theoretical upper bound":[1/n_classes,1]}, index=[0,1])
-            sbs.lineplot(data=ideal_df, ax=ax, dashes=[(2,2)], palette=["green"])
         class_max_and_mean_acc = pd.concat({"max": class_max_acc, "mean": class_mean_acc}, axis='columns')
 
         sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))#, xlabel="confounder_labels strength in test set" )
+        if ideal:
+            #ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
+            ideal_df = pd.DataFrame({"theoretical upper bound":[1/n_classes,1]}, index=[0,1])
+            sbs.lineplot(data=ideal_df, ax=ax, dashes=[(2,2)], palette=["red"])
         plt.tight_layout()
         #conf_max_acc = confounder_accuracy.max(axis='rows')
         #conf_mean_acc = confounder_accuracy.mean(axis='rows')
@@ -196,16 +196,20 @@ class plot:
         plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
 
     @staticmethod
-    def plot_heatmap_with_mean(df, ax=None):
-        df_mean = df.groupby("model")["classification_accuracy"].mean()
-        df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
-        df = df.pivot_table(index="model", columns="experiment", values="classification_accuracy")
-        df = pd.concat([df, df_mean], axis=1)
-        df = df.reindex(df.sort_values(by="mean", ascending=False).index)
+    def plot_heatmap_with_mean(df, num=1, ax=None, agg_func=np.mean, mean=True):
+        df = df.groupby(["model", "experiment"]).nth([x for x in range(num)])
+        if mean:
+            df_mean = df.groupby("model")["classification_accuracy"].mean()
+            df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
+        df = df.pivot_table(index="model", columns="experiment", values="classification_accuracy", aggfunc=agg_func)
+        if mean:
+            df = pd.concat([df, df_mean], axis=1)
+            df = df.reindex(df.sort_values(by="mean", ascending=False).index)
+        vmin = 0.5 if mean else 0
         if ax==None:
-            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None)
+            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=None)
         else:
-            sbs.heatmap(data=df, annot=True, vmin=0.5, vmax=None, ax=ax)
+            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=None, ax=ax)
 
     @staticmethod
     def split_and_plot_heatmaps_with_mean(df):
@@ -333,7 +337,7 @@ class wandb_sync:
     # returns a list of the best run for every model
     @staticmethod
     def get_best_runs(project=None, filters=None, force_reload=False):
-        print("Searching for best runs ...",end=" ")
+        print("Searching for best runs ...", end=" ")
         t = time.time()
         path = wandb_sync.get_path_from_filters(project, filters)
         file_path = path + "/best_result.pkl"
@@ -351,16 +355,18 @@ class wandb_sync:
             #print(run_names)
 
             best_runs = []
+            num_models = 20
             for m in run_names:
                 filters_mod = {"config.model_name": m}
                 runs = wandb_sync.get_runs(project, filters|filters_mod)
                 if len(runs) == 0:
                     raise Exception("get_best_runs: no runs found")
-                best_runs.append(runs[0])
+                for i in range(num_models):
+                    best_runs.append(runs[i])
 
-            assert(len(best_runs) == len(list(dict.fromkeys(best_runs))))
+            #assert(len(best_runs) == len(list(dict.fromkeys(best_runs)))) TODO check
 
-            print(f"{len(best_runs)} models found in database ...", end=" ")
+            print(f"{len(best_runs)} models found in database ({num_models} models in each run)...", end=" ")
 
             best_runs_dir = {"name": [], "run_path":[]}
             for run in best_runs:
@@ -368,6 +374,7 @@ class wandb_sync:
                     best_runs_dir[key] = []
                 for key in run.summary_metrics:
                     best_runs_dir[key] = []
+
 
             keys = best_runs_dir.keys()
             for run in best_runs:
@@ -412,10 +419,11 @@ class wandb_sync:
 
         model_list = []
 
-        for model in runs["model_name"]:
-            config = runs.loc[runs["model_name"] == model]
-            model_class = config.loc[:,"model_class"].values[0]
-            random_int = config.loc[:,"random"].values[0]
+        for run in runs.iterrows():
+            #config = runs.loc[runs["model_name"] == run]
+            config = run[1]
+            model_class = config["model_class"]
+            random_int = config["random"]
             file_name_weights = str(random_int) + ".pt"
             dir_path_weights = os.path.join(path, "weights")
             file_path_weights = os.path.join(dir_path_weights, file_name_weights)
@@ -425,35 +433,39 @@ class wandb_sync:
             file_path_model = os.path.join(dir_path_model, file_name_model)
 
             if load_complete_model and os.path.exists(file_path_model) and not force_reload:
-                model = torch.load(file_path_model)
+                run = torch.load(file_path_model)
             else:
                 # conditioning is needed for init of model
-                conditioning = config.loc[:,"conditioning"].values[0]
+                conditioning = config["conditioning"]
                 if conditioning == "" or pd.isna(conditioning):
                     conditioning = None
 
                 model_fact = getattr(Models, model_class)
                 if issubclass(model_fact, Models.BrNet):
-                    model = model_fact()
+                    run = model_fact()
                 elif issubclass(model_fact, Models.BrNet_adversarial):
-                    model = model_fact(config.loc[:,"alpha"].values[0], conditioning=conditioning)
+                    run = model_fact(config["alpha"], conditioning=conditioning)
                 elif issubclass(model_fact, Models.BrNet_adversarial_double):
-                    model = model_fact(config.loc[:,"alpha"].values[0], config.loc[:,"alpha2"].values[0], conditioning=conditioning)
+                    run = model_fact(config["alpha"], config["alpha2"], conditioning=conditioning)
                 else:
                     raise AssertionError("Did not find any matching model")
 
 
                 if not os.path.exists(file_path_weights) or force_reload:
-                    run_path = config.loc[:,"run_path"].values[0]
+                    run_path = config["run_path"]
                     os.makedirs(dir_path_weights, exist_ok=True)
-                    wandb.restore(file_name_weights, run_path=os.path.join(*run_path), root=dir_path_weights)
+                    try:
+                        wandb.restore(file_name_weights, run_path=os.path.join(*run_path), root=dir_path_weights)
+                    except:
+                        print("Skipped run:", config["random"], " ... ", end=" " )
+                        continue
                     #print(f"Restored file {file_name_weights}")
                 model_weights = torch.load(file_path_weights)
-                model.load_state_dict(model_weights)
+                run.load_state_dict(model_weights)
                 os.makedirs(dir_path_model, exist_ok=True)
-                torch.save(model, file_path_model)
-            model.random = random_int
-            model_list.append(model)
+                torch.save(run, file_path_model)
+            run.random = random_int
+            model_list.append(run)
         print(f"done ({round(time.time()-t, 3)}s)")
         return model_list
 
@@ -578,7 +590,6 @@ class create_dataloader:
 
 class generator:
     def __init__(self, mode, samples, confounding_factor, overlap=0, seed=42, params=None, de_correlate_confounder = False, domain=0):
-        np.random.seed(seed)
         self.x = None
         self.y = None
         self.confounder_labels = None
@@ -1303,9 +1314,8 @@ class confounder:
 
         # get models
         model_list = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
-
         # test networks and save accuracy
-        results = {"model":[], "classification_accuracy":[], "confounder_accuracy":[], "random":[], "experiment":[experiment for x in range(len(model_list))]}
+        results = {"model":[], "classification_accuracy":[], "confounder_accuracy":[], "random":[], "experiment":np.full((len(model_list)), experiment)}
         keys = filters.keys()
         for k in keys:
             results[k] = []
