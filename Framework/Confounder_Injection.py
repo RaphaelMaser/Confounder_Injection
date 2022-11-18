@@ -196,12 +196,12 @@ class plot:
         plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
 
     @staticmethod
-    def plot_heatmap_with_mean(df, num=1, ax=None, agg_func=np.mean, mean=True):
+    def plot_heatmap_with_mean(df, num=1, ax=None, agg_func=np.mean, mean=True, accuracy="classification_accuracy"):
         df = df.groupby(["model", "experiment"]).nth([x for x in range(num)])
         if mean:
-            df_mean = df.groupby("model")["classification_accuracy"].mean()
-            df_mean = pd.DataFrame(df_mean).rename(columns={"classification_accuracy": "mean"})
-        df = df.pivot_table(index="model", columns="experiment", values="classification_accuracy", aggfunc=agg_func)
+            df_mean = df.groupby("model")[accuracy].mean()
+            df_mean = pd.DataFrame(df_mean).rename(columns={accuracy: "mean"})
+        df = df.pivot_table(index="model", columns="experiment", values=accuracy, aggfunc=agg_func)
         if mean:
             df = pd.concat([df, df_mean], axis=1)
             df = df.reindex(df.sort_values(by="mean", ascending=False).index)
