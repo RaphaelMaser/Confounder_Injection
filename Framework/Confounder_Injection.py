@@ -417,13 +417,15 @@ class wandb_sync:
         except:
             raise Exception("create_models_from_runs: no best_results.pkl available")
 
-        model_list = []
+        model_dict = {"model": [], "classification_accuracy_val": []}
 
         for run in runs.iterrows():
             #config = runs.loc[runs["model_name"] == run]
             config = run[1]
             model_class = config["model_class"]
             random_int = config["random"]
+            classification_accuracy = config["classification_accuracy"]
+
             file_name_weights = str(random_int) + ".pt"
             dir_path_weights = os.path.join(path, "weights")
             file_path_weights = os.path.join(dir_path_weights, file_name_weights)
@@ -433,7 +435,7 @@ class wandb_sync:
             file_path_model = os.path.join(dir_path_model, file_name_model)
 
             if load_complete_model and os.path.exists(file_path_model) and not force_reload:
-                run = torch.load(file_path_model)
+                model = torch.load(file_path_model)
             else:
                 # conditioning is needed for init of model
                 conditioning = config["conditioning"]
@@ -442,11 +444,11 @@ class wandb_sync:
 
                 model_fact = getattr(Models, model_class)
                 if issubclass(model_fact, Models.BrNet):
-                    run = model_fact()
+                    model = model_fact()
                 elif issubclass(model_fact, Models.BrNet_adversarial):
-                    run = model_fact(config["alpha"], conditioning=conditioning)
+                    model = model_fact(config["alpha"], conditioning=conditioning)
                 elif issubclass(model_fact, Models.BrNet_adversarial_double):
-                    run = model_fact(config["alpha"], config["alpha2"], conditioning=conditioning)
+                    model = model_fact(config["alpha"], config["alpha2"], conditioning=conditioning)
                 else:
                     raise AssertionError("Did not find any matching model")
 
@@ -461,13 +463,14 @@ class wandb_sync:
                         continue
                     #print(f"Restored file {file_name_weights}")
                 model_weights = torch.load(file_path_weights)
-                run.load_state_dict(model_weights)
+                model.load_state_dict(model_weights)
                 os.makedirs(dir_path_model, exist_ok=True)
-                torch.save(run, file_path_model)
-            run.random = random_int
-            model_list.append(run)
+                torch.save(model, file_path_model)
+            model.random = random_int
+            model_dict["model"].append(model)
+            model_dict["classification_accuracy_val"].append(classification_accuracy)
         print(f"done ({round(time.time()-t, 3)}s)")
-        return model_list
+        return model_dict
 
     @staticmethod
     def get_path_from_filters(project, filters):
@@ -1313,19 +1316,23 @@ class confounder:
         wandb_sync.get_best_runs(project=project, filters=filters, force_reload=force_reload)
 
         # get models
-        model_list = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
+        model_dict = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
+
         # test networks and save accuracy
-        results = {"model":[], "classification_accuracy":[], "confounder_accuracy":[], "random":[], "experiment":np.full((len(model_list)), experiment)}
+        results = {"model":[], "classification_accuracy":[],
+                   "classification_accuracy_val":model_dict["classification_accuracy_val"],
+                   "confounder_accuracy": [], "random":[], "experiment":np.full((len(model_dict["model"])), experiment)}
         keys = filters.keys()
         for k in keys:
             results[k] = []
 
-        for m in model_list:
+        for m in model_dict["model"]:
             self.model = m
             acc = self.test(batch_size=64)
             results["model"].append(m.get_name())
             results["classification_accuracy"].append(acc[0])
             results["confounder_accuracy"].append(acc[1])
+            #results["classification_accuracy_val"].append()
             for k in keys:
                 results[k].append(filters[k])
             results["random"].append(self.model.random)

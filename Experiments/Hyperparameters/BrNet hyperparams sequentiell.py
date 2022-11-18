@@ -41,7 +41,7 @@ search_space = {
     #"epochs":epochs,
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
-    "alpha":tune.uniform(0,1),
+    "alpha":1,#tune.uniform(0,1),
     #"alpha2":tune.uniform(0,1),
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-6,1e-1),
