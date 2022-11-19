@@ -361,7 +361,7 @@ class wandb_sync:
                 runs = wandb_sync.get_runs(project, filters|filters_mod)
                 if len(runs) == 0:
                     raise Exception("get_best_runs: no runs found")
-                for i in range(num_models):
+                for i in range(min(num_models, len(runs))):
                     best_runs.append(runs[i])
 
             #assert(len(best_runs) == len(list(dict.fromkeys(best_runs)))) TODO check
@@ -471,6 +471,49 @@ class wandb_sync:
             model_dict["classification_accuracy_val"].append(classification_accuracy)
         print(f"done ({round(time.time()-t, 3)}s)")
         return model_dict
+
+    @staticmethod
+    def create_models_from_runs_jit(project, filters, force_reload=False, load_complete_model=True):
+        print("Re-creating models ...", end=" ")
+        t = time.time()
+        path = wandb_sync.get_path_from_filters(project, filters)
+
+        try:
+            #print(path + "/best_result.pkl")
+            runs = pd.read_pickle(path + "/best_result.pkl")
+        except:
+            raise Exception("create_models_from_runs: no best_results.pkl available")
+
+        model_dict = {"model": [], "classification_accuracy_val": []}
+
+        for run in runs.iterrows():
+            #config = runs.loc[runs["model_name"] == run]
+            config = run[1]
+            model_class = config["model_class"]
+            random_int = config["random"]
+            classification_accuracy = config["classification_accuracy"]
+
+            file_name_model = str(random_int) + ".jit"
+            dir_path_model = os.path.join(path, "model")
+            file_path_model = os.path.join(dir_path_model, file_name_model)
+
+            if load_complete_model and os.path.exists(file_path_model) and not force_reload:
+                model = torch.jit.load(file_path_model, map_location="cpu")
+            else:
+                run_path = config["run_path"]
+                os.makedirs(dir_path_model, exist_ok=True)
+                try:
+                    wandb.restore(file_path_model, run_path=os.path.join(*run_path), root=dir_path_model)
+                except:
+                    print("Skipped run:", config["random"], " ... ", end=" " )
+                    continue
+                model = torch.jit.load(file_path_model, map_location="cpu")
+            model.random = random_int
+            model_dict["model"].append(model)
+            model_dict["classification_accuracy_val"].append(classification_accuracy)
+        print(f"done ({round(time.time()-t, 3)}s)")
+        return model_dict
+
 
     @staticmethod
     def get_path_from_filters(project, filters):
@@ -1312,13 +1355,16 @@ class confounder:
         classification_accuracy, confounder_accuracy = t.test(test_dataloader)
         return classification_accuracy, confounder_accuracy
 
-    def test_best_networks(self, project="Hyperparameters", filters=None, force_reload=False, load_complete_model=True, experiment=0):
+    def test_best_networks(self, project="Hyperparameters", filters=None, force_reload=False, load_complete_model=True, experiment=0, jit_mode=0):
         t = time.time()
         # get best runs
         wandb_sync.get_best_runs(project=project, filters=filters, force_reload=force_reload)
 
         # get models
-        model_dict = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
+        if jit_mode:
+            model_dict = wandb_sync.create_models_from_runs_jit(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
+        else:
+            model_dict = wandb_sync.create_models_from_runs(project=project, filters=filters, force_reload=force_reload, load_complete_model=load_complete_model)
 
         # test networks and save accuracy
         results = {"model":[], "classification_accuracy":[],
@@ -1466,7 +1512,7 @@ class helper():
 
 
     @staticmethod
-    def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target, force_reload=False, seed=None, load_complete_model=True, experiment=0, finetuning=None):
+    def BrNet_on_BrNet_data(batch_date, test_confounding, target_domain_samples, target_domain_confounding, de_correlate_confounder_target, force_reload=False, seed=None, load_complete_model=True, experiment=0, finetuning=None, jit_mode=False):
         filters = {
             "summary_metrics.confounder_strength": test_confounding,
             "config.target_domain_samples": target_domain_samples,
@@ -1489,7 +1535,7 @@ class helper():
         c = confounder(seed=seed)
         c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[target_domain_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_target, params=params)
 
-        df = c.test_best_networks(filters=filters, force_reload=force_reload, load_complete_model=load_complete_model, experiment=experiment)
+        df = c.test_best_networks(filters=filters, force_reload=force_reload, load_complete_model=load_complete_model, experiment=experiment, jit_mode=jit_mode)
         return df
 
     @staticmethod

@@ -171,7 +171,7 @@ def run_tune(search_space):
                            local_dir=local_dir,
                            sync_config=ray.tune.SyncConfig(syncer=None),
                            checkpoint_config=air.CheckpointConfig(
-                               num_to_keep = 1,
+                               num_to_keep = 10,
                            ),
                        ),
                         param_space=search_space,
@@ -264,7 +264,7 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     run_tune(search_space)
 
 #os.environ['WANDB_MODE'] = 'dryrun'
-#os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 # run experiments
 BrNet_hyperparams()
