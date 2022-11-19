@@ -1319,7 +1319,7 @@ class confounder:
             path = os.path.join(working_directory, str(config["random"]) + ".pt")
             path_jit = os.path.join(working_directory, str(config["random"]) + ".jit")
             torch.save(self.model.state_dict(), path)
-            torch.jit.save(self.model, path_jit)
+            torch.jit.script(model).save(path_jit)
             wandb.save(path)
 
             #wandb.log()
