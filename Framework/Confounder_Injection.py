@@ -1,17 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
 
 
-#import pandas as pd
-'''
-127.0.0.1:8000:/?token=417c65a720ebe817507356246b10f9a925d3b89cbb60ed50
-'''
 import copy
-import shutil
 import sys
-
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas
@@ -20,36 +13,27 @@ import seaborn as sbs
 import seaborn_image as sbsi
 import time
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
 from Framework import Models
 import warnings
 import pandas as pd
 import ipywidgets as widgets
 from ipywidgets import interact, fixed
-from ray import tune
 from ray.air import session
 from ray.air.checkpoint import Checkpoint
-from ray.tune.schedulers import ASHAScheduler
 import wandb
-import datetime
-import ray
 import os
-import pickle
-from termcolor import colored
-
-from ray.tune.integration.wandb import (
-    WandbTrainableMixin,
-    wandb_mixin,
-)
 
 
-warnings.filterwarnings("ignore",category=FutureWarning)
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
+# Some plotting methods to avoid rewriting code
 class plot:
     def __init__(self):
         self.fontsize = 20
+
 
     def accuracy_vs_epoch(self, results):
         fig, ax = plt.subplots(1,2,figsize=(8*2,4))
@@ -62,6 +46,7 @@ class plot:
         sbs.lineplot(data=classification_accuracy, ax=ax[0]).set(title=f"{model_name}\nClassification accuracy", ylim=(0.45,1.05))
         sbs.lineplot(data=confounder_accuracy, ax=ax[1]).set(title=f"{model_name}\nConfounder accuracy", ylim=(0.45,1.05))
         plt.tight_layout()
+
 
     def accuracy_vs_epoch_all(self, results):
         results_list = [d for _,d in results.groupby(["confounder_strength"])]
@@ -76,8 +61,8 @@ class plot:
             sbs.lineplot(data=confounder_accuracy, ax=ax[1][i]).set(title=f"Confounder Accuracy\n(confounder strength: {confounder_strength})", ylim=(0.45,1.05))
         fig.tight_layout()
 
+
     def accuracy_vs_strength(self, results, n_classes=2, ideal=False):
-        #print(results)
         fig, ax = plt.subplots(1,1,figsize=(8,6))
         fig.suptitle("Accuracy vs Strength", fontsize=self.fontsize)
         model_name = results["model_name"][0]
@@ -91,17 +76,11 @@ class plot:
 
         sbs.lineplot(data=class_max_and_mean_acc, markers=True, ax=ax).set(title=f"{model_name}\nClassification Accuracy", ylim=((1/n_classes)-0.05,1.05))#, xlabel="confounder_labels strength in test set" )
         if ideal:
-            #ideal_df = pd.DataFrame({"ideal":[1/n_classes,1]}, index=[0,1])
             ideal_df = pd.DataFrame({"theoretical upper bound":[1/n_classes,1]}, index=[0,1])
             sbs.lineplot(data=ideal_df, ax=ax, dashes=[(2,2)], palette=["red"])
         plt.tight_layout()
-        #conf_max_acc = confounder_accuracy.max(axis='rows')
-        #conf_mean_acc = confounder_accuracy.mean(axis='rows')
-        #conf_max_and_mean_acc = pd.concat({"max": conf_max_acc, "mean": conf_mean_acc}, axis='columns')
-        #sbs.lineplot(data=conf_max_and_mean_acc, markers=True, ax=ax[1]).set(title=f"{model_name}\nConfounder Accuracy", ylim=(0.45,1.05))
 
 
-    # plot distributions (includes all samples of the class)
     def tsne(self, x, y, n):
         x = np.reshape(x, (x.shape[0],-1))
         x_embedded = TSNE(random_state=42, n_components=n, learning_rate="auto", init="pca").fit_transform(x)
@@ -196,7 +175,7 @@ class plot:
         plot.plot_heatmap(df2, de_correlate_confounder_target, target_domain_samples, ax[1])
 
     @staticmethod
-    def plot_heatmap_with_mean(df, num=1, ax=None, agg_func=np.mean, mean=True, accuracy="classification_accuracy"):
+    def plot_heatmap_with_mean(df, num=1, ax=None, agg_func=np.mean, mean=True, accuracy="classification_accuracy", full=False, vmin=None, vmax=None):
         df = df.groupby(["model", "experiment"]).nth([x for x in range(num)])
         if mean:
             df_mean = df.groupby("model")[accuracy].mean()
@@ -205,11 +184,16 @@ class plot:
         if mean:
             df = pd.concat([df, df_mean], axis=1)
             df = df.reindex(df.sort_values(by="mean", ascending=False).index)
-        vmin = 0.5 if mean else 0
+
+        if vmin==None:
+            vmin = 0.5 if mean else 0
+        if full:
+            df = df.reindex(columns=["4.\nde-correlated\n0/512","5.\nde-correlated\n2/512","6.\nde-correlated\n4/512","7.\nde-correlated\n8/512","8.\nde-correlated\n16/512","9.\nde-correlated\n32/512","10.\nde-correlated\n64/512","mean"])
         if ax==None:
-            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=None)
+            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=vmax)
         else:
-            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=None, ax=ax)
+            sbs.heatmap(data=df, annot=True, vmin=vmin, vmax=vmax, ax=ax)
+        return df
 
     @staticmethod
     def split_and_plot_heatmaps_with_mean(df):
@@ -219,8 +203,6 @@ class plot:
 
         df2 = plot.filter(df, reverse=True)
         plot.plot_heatmap_with_mean(df2, ax[1])
-
-
 
 
 class wandb_sync:
@@ -258,15 +240,12 @@ class wandb_sync:
                 name_list.append(run.name)
             history_dict = [hl.to_dict() for hl in history_list]
 
-            #print(history_dict)
-            #print("\n\n")
-            #print(history_dict)
             runs_df = pd.DataFrame({
                 "history": history_dict,
                 "config": config_list,
                 "name": name_list
             })
-            #runs_df.to_csv(f"{project}.csv")
+
             runs_df.to_pickle(f"{path}/sync.pkl")
             runs_df.to_json(f"{path}/sync.json")
         print(f"Syncing took {time.time() - t} seconds")
@@ -858,10 +837,11 @@ class train:
                 y = label["y"].to(self.device)
                 conf = label["confounder_labels"].to(self.device)
 
-                class_pred, _, _ = self.model(X)
+                class_pred, conf_pred, _ = self.model(X)
                 #test_loss += self.loss_fn(class_pred, label["y"]).item()
                 classification_accuracy += (class_pred.argmax(1) == y).type(torch.float).sum().item()
-                confounder_accuracy += (class_pred.argmax(1) == conf).type(torch.float).sum().item()
+                if conf_pred != None:
+                    confounder_accuracy += (conf_pred.argmax(1) == conf).type(torch.float).sum().item()
         #test_loss /= num_batches
         classification_accuracy /= size
         if confounder_size <= 0:
@@ -1369,6 +1349,7 @@ class confounder:
         # test networks and save accuracy
         results = {"model":[], "classification_accuracy":[],
                    "classification_accuracy_val":model_dict["classification_accuracy_val"],
+                   "classification_accuracy_diff":[],
                    "confounder_accuracy": [], "random":[], "experiment":np.full((len(model_dict["model"])), experiment)}
         keys = filters.keys()
         for k in keys:
@@ -1385,6 +1366,7 @@ class confounder:
                 results[k].append(filters[k])
             results["random"].append(self.model.random)
 
+        results["classification_accuracy_diff"] = np.subtract(results["classification_accuracy_val"], results["classification_accuracy"])
         print(f"Runs synced, models re-created and tested (took {round(time.time()-t, 3)}s)\n")
 
         results_df = pandas.DataFrame.from_dict(results)
@@ -1585,14 +1567,14 @@ class helper():
                 helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=32, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="9.\nde-correlated\n32/512", jit_mode=jit_mode),
                 helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="10.\nde-correlated\n64/512", jit_mode=jit_mode),
 
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=2, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno-confounder\n2/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=0, target_domain_samples=4, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno-confounder\n4/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=2, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nde-correlated\n2/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=4, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n4/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=8, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="5.\nde-correlated\n8/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="6.\nde-correlated\n16/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=32, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="7.\nde-correlated\n32/512\nfinetuning", jit_mode=jit_mode),
-                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=0, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="8.\nde-correlated\n64/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=2, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="1.\nno-confounder\n2/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=0, target_domain_samples=4, target_domain_confounding=0, de_correlate_confounder_target=0, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="2.\nno-confounder\n4/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=2, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="3.\nde-correlated\n2/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=4, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="4.\nde-correlated\n4/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=8, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="5.\nde-correlated\n8/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=16, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="6.\nde-correlated\n16/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=32, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="7.\nde-correlated\n32/512\nfinetuning", jit_mode=jit_mode),
+                helper.BrNet_on_BrNet_data(batch_date=batch_date, finetuning=1, test_confounding=1, target_domain_samples=64, target_domain_confounding=1, de_correlate_confounder_target=1, force_reload=force_reload, seed=seed, load_complete_model=load_complete_model, experiment="8.\nde-correlated\n64/512\nfinetuning", jit_mode=jit_mode),
 
             ]
 
