@@ -1,20 +1,17 @@
-import matplotlib.pyplot as plt
+import sys
 from ray.tune.integration.wandb import wandb_mixin
-
 import Framework.Confounder_Injection as CI
 import Framework.Models as Models
 import importlib
-importlib.reload(Models)
-importlib.reload(CI)
 import torch
 from ray import tune
+from ray import air
 import ray
 from ray.tune import CLIReporter
 import datetime
 import argparse
 import os
-import time
-import shutil
+import numpy as np
 
 params = [
     [[1, 4], [3, 6]], # real feature
@@ -22,21 +19,17 @@ params = [
 ]
 
 e = datetime.datetime.now()
-#epochs = 1000
 cpus_per_trial = 1
-#max_concurrent_trials = 32
-#ray.init(num_cpus=128)
 ray.init()
-local_dir = "/mnt/lscratch/users/rmaser/ray_results"
-#local_dir= os.path.join(os.getcwd(), "ray_results")
-#local_dir = None
+local_dir = os.path.join("/dev/shm","ray_results")
 
+os.path.join(local_dir, f"{np.random.randint(sys.maxsize)}")
+
+# Define the search space for ray
 search_space = {
-    #"epochs":epochs,
     "batch_size": tune.choice([64,128,256]),
     "optimizer":torch.optim.Adam,
-    "alpha":tune.uniform(0,1),
-    "alpha2":tune.uniform(0,1),
+    "alpha":1,
     "lr": tune.loguniform(1e-5,1e-1),
     "weight_decay": tune.loguniform(1e-6,1e-1),
     "wandb" : {
@@ -53,6 +46,7 @@ search_space = {
     },
 }
 
+# Parse the input arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', action="store", dest="date", help="Define the date")
 parser.add_argument('-c', action="store", dest="c", help="Define the cpu count")
@@ -60,6 +54,7 @@ parser.add_argument('-pbt', action="store", type=int, dest="pbt", help="Define t
 parser.add_argument('-epochs', action="store", type=int, dest="epochs", help="Define the scheduler")
 parser.add_argument('-samples', action="store", type=int, dest="samples", help="Define the scheduler")
 parser.add_argument('-finetuning', action="store", type=int, dest="finetuning", help="Enable finetuning?")
+parser.add_argument('-test_samples', action="store", type=int, dest="test_samples", help="Define the scheduler")
 parser.add_argument('-test_confounding', type=int, action="store", dest="test_confounding", help="Define strength of confounder in test data")
 parser.add_argument('-target_domain_samples', type=int, action="store", dest="target_domain_samples", help="Define number of target domain samples")
 parser.add_argument('-target_domain_confounding', type=int, action="store", dest="target_domain_confounding", help="Define confounding of target domain")
@@ -79,75 +74,78 @@ samples = args.samples
 pbt = args.pbt
 epochs = args.epochs
 finetuning = args.finetuning
+test_samples = args.test_samples
 
-# if finetuning==1:
-#     search_space["batch_size"] = target_domain_samples
-
-#@wandb_mixin
+# Training procedure which will be run in parallel by Ray during PBT
 def train_tune(config, checkpoint_dir=None):
-    #print(f"--- RESSOURCES ---\n{ray.cluster_resources()}")
     if "alpha" in config:
         config["model"].alpha = config["alpha"]
     if "alpha2" in config:
         config["model"].alpha2 = config["alpha2"]
     if not "wandb_init" in config:
         config["wandb_init"] = None
-    # print("Alpha: ", config["model"].alpha)
-    # print("Alpha2: ", config["model"].alpha2)
 
     # pre-train model on the confounded dataset and then finetune it on the small dataset
     if finetuning:
         c_ft = CI.confounder()
-        c_ft.generate_data(mode="br_net", samples=512, target_domain_samples=0, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c_ft.generate_data(mode="br_net", samples=512, target_domain_samples=0, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
         c_ft.train(use_tune=False, use_wandb=False, epochs=int(config["epochs"]/2), model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
 
         c = CI.confounder()
-        c.generate_data(mode="br_net", samples=0, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
-        c.train(use_tune=True, use_wandb=True, epochs=int(config["epochs"]/2), model = c_ft.model, optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+        c.generate_data(mode="br_net", samples=0, target_domain_samples=target_domain_samples, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.train(use_tune=True, use_wandb=True, epochs=int(config["epochs"]/2), model = c_ft.model, optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], checkpoint_dir=checkpoint_dir)
 
     # standard routine
     else:
         c = CI.confounder()
-        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
-        c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"])
+        c.generate_data(mode="br_net", samples=512, target_domain_samples=target_domain_samples, test_samples=test_samples, target_domain_confounding=target_domain_confounding, train_confounding=1, test_confounding=[test_confounding], de_correlate_confounder_target=de_correlate_confounder_target, de_correlate_confounder_test=de_correlate_confounder_test, params=params)
+        c.train(use_tune=True, use_wandb=True, epochs=config["epochs"], model = config["model"], optimizer=config["optimizer"], hyper_params={"batch_size": config["batch_size"],"lr": config["lr"], "weight_decay": config["weight_decay"]}, wandb_init=config["wandb_init"], checkpoint_dir=checkpoint_dir)
 
 
+# This function executes PBT
 def run_tune(search_space):
     reporter = CLIReporter(max_progress_rows=1, max_report_frequency=600*3)
+
     if pbt:
         scheduler = tune.schedulers.PopulationBasedTraining(
-            time_attr="training_iteration",
-            perturbation_interval=5,
+            time_attr="epoch",
+            perturbation_interval=int(epochs/20),
             hyperparam_mutations=
             {
                 "lr":search_space["lr"],
                 "weight_decay": search_space["weight_decay"],
-                "batch_size": search_space["batch_size"],
-                "alpha": search_space["alpha"],
-                # "alpha2": search_space["alpha2"],
+                "batch_size": [64,128,256],
             },
             metric="mean_accuracy",
-            mode="max"
+            mode="max",
+            synch=False
         )
     else:
         scheduler = None
 
-    tune.run(train_tune, num_samples=samples, config=search_space, keep_checkpoints_num=4, progress_reporter=reporter, scheduler=scheduler,
-             resources_per_trial={"cpu":cpus_per_trial, "gpu":0},
-             #max_concurrent_trials=max_concurrent_trials,
-             local_dir=local_dir
-    )
-    #os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
-    # remove ray_results folder
-    #time.sleep(20)
-    #shutil.rmtree(local_dir, ignore_errors=True)
+    tuner = tune.Tuner(train_tune,
+                       tune_config=tune.TuneConfig(
+                           num_samples = samples,
+                           scheduler=scheduler,
+                       ),
+                       run_config=air.RunConfig(
+                           local_dir=local_dir,
+                           sync_config=ray.tune.SyncConfig(syncer=None),
+                           checkpoint_config=air.CheckpointConfig(
+                               num_to_keep = 10,
+                           ),
+                       ),
+                        param_space=search_space,
+                       )
+    tuner.fit()
+
     name = search_space["model"].get_name()
     print(f"----- finished ----\n"
           f"{name}\n"
           f"----- finished ----\n")
 
 
-
+# These functions create the model indicated in the title and start PBT with the function above
 def BrNet_hyperparams():
     search_space["model"] = Models.BrNet()
     search_space["wandb_init"]["group"] = "BrNet"
@@ -223,8 +221,8 @@ def BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams():
     search_space["wandb_init"]["group"] = "BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned"
     run_tune(search_space)
 
-#os.environ['WANDB_MODE'] = 'dryrun'
-#os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "0"
+# Disable unnecessary ray logging
+os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = "1"
 
 # run experiments
 BrNet_hyperparams()
@@ -235,20 +233,3 @@ BrNet_CF_free_features_corr_hyperparams()
 BrNet_CF_free_features_corr_conditioned_hyperparams()
 BrNet_DANN_entropy_hyperparams()
 BrNet_DANN_entropy_conditioned_hyperparams()
-
-# BrNet_CF_free_labels_corr_hyperparams()
-# BrNet_CF_free_labels_corr_conditioned_hyperparams()
-# BrNet_DANN_corr_hyperparams()
-# BrNet_DANN_corr_conditioned_hyperparams()
-# BrNet_CF_free_DANN_labels_entropy_hyperparams()
-# BrNet_CF_free_DANN_labels_entropy_conditioned_hyperparams()
-# BrNet_CF_free_DANN_labels_entropy_features_corr_hyperparams()
-# BrNet_CF_free_DANN_labels_entropy_features_corr_conditioned_hyperparams()
-
-# for i in range(0,5):
-#     print(f"Waited for {i} minutes")
-#     time.sleep(60)
-
-
-#os.system(f"cd {local_dir} && conda run -n confounder_3.10 wandb sync --sync-all")
-print("--- finished ---")
