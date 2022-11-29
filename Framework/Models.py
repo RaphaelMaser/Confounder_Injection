@@ -2,102 +2,11 @@ import warnings
 
 from torch import nn
 from Framework.Layers import GradientReversal
-from scipy import stats
 import torch
-import pandas as pd
 from termcolor import colored
 
 def reset_seed():
     torch.manual_seed(42)
-
-# Building a Neural Network architecture
-class NeuralNetwork(nn.Module):
-    def __init__(self, input_size):
-        reset_seed()
-        super(NeuralNetwork, self).__init__()
-        self.alpha = None
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, 512),
-            nn.ReLU(),
-            nn.Linear(512, 2),
-            #nn.ReLU(),
-            #nn.Linear(64, 2),
-            #nn.ReLU(),
-            #nn.Linear(16, 2),
-            #nn.ReLU()
-        )
-
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits, None
-
-    def get_name(self):
-        return "Neural Network"
-
-# In[11]:
-
-
-# Building a Neural Network architecture
-class SimpleConv(nn.Module):
-    def __init__(self):
-        reset_seed()
-        super(SimpleConv, self).__init__()
-        self.alpha = None
-        self.linear_relu_stack = nn.Sequential(
-            nn.Conv2d(1, 6, kernel_size=5),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-
-            nn.Flatten(),
-            nn.Linear(1176,84),
-            nn.ReLU(),
-
-            nn.Linear(84,2)
-        )
-
-    def forward(self, x):
-        #x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits, None
-
-    def get_name(self):
-        return "SimpleConv"
-
-# Building a Neural Network architecture
-class LeNet_5(nn.Module):
-    def __init__(self):
-        reset_seed()
-        super(LeNet_5, self).__init__()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Conv2d(1, 6, kernel_size=5),
-            nn.ReLU(),
-
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(6, 16,kernel_size=5),
-            nn.ReLU(),
-
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(16, 120, kernel_size=5),
-            nn.ReLU(),
-
-            nn.Flatten(),
-            nn.Linear(120,84),
-            nn.ReLU(),
-
-            nn.Linear(84,2)
-        )
-
-    def forward(self, x):
-        #x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits, None
-
-    def get_name(self):
-        return "LeNet"
-
-# In[12]:
 
 
 # Building a Neural Network architecture
@@ -232,6 +141,9 @@ class BrNet_DANN_corr(BrNet_adversarial):
         self.adv_loss = squared_correlation()
         self.adv_output = 1
 
+
+# Here are implementations with two adversaries (mixtures between DANN and CF-net)
+# Did not prove to be useful in experiments
 class BrNet_adversarial_double(nn.Module):
     def __init__(self, alpha, alpha2, class_output, adv1_output, adv2_output, conditioning=None):
         reset_seed()
@@ -381,54 +293,41 @@ class SimpleConv_CF_free(nn.Module):
     def get_name(self):
         return "SimpleConv_CF_free"
 
+# Implementation of squared correlation
 class squared_correlation(torch.nn.Module):
     def __init__(self):
         super(squared_correlation,self).__init__()
 
     def forward(self, pred, real):
-        # print("--- squared_correlation ---")
-        # print(f"Real tensor: {real}")
-        # print(f"Pred tensor: {pred}")
-
         real = real.reshape(len(real),1)
         pred = torch.squeeze(pred)
         real = torch.squeeze(real)
-
-        # print(f"\n\n pred is {pred}\n\n")
-        # print(f"\n\n real is {real}\n\n")
 
         # could happen in conditioning case
         if real.dim() == 0:
             warning = colored(f"WARNING:\nreal:{real}\npred:{pred}\n","red")
             warnings.warn(warning)
-            #raise Exception(colored(f"Real dim was zero","red"))
             return 0
 
         real, pred = self.check_correctness(real=real, pred=pred)
         x = torch.stack((pred, real), dim=0)
-        # print(f"\n\n x is {x}\n\n")
 
 
         corr_matrix = torch.corrcoef(x)
-        # print(f"\n\n correlation_matrix is {corr_matrix}\n\n")
         corr = - torch.square(corr_matrix[0][1])
-        # print(f"\n\n correlation is {corr}\n\n")
         return corr
 
+    # We need to avoid that one of the vectors (real and pred) is 0 everywhere, otherwise
+    # it will be divided by zero which does not throw an error but rather replaces the value
+    # by NaN (which in turn leads to backpropagation of NaN)
     def check_correctness(self, real, pred):
-        # if real.dim() == 0:
-        #     raise Exception(f"Real:{real}\n and pred:{pred}\n")
 
         if real.dim() != 0 and len(real) == 0:
             return real, pred
 
-        # print("Real and pred:")
-        # print(real,"\n", pred)
         if len(torch.unique(real)) == 1:
             real = real.add(torch.rand(len(real))/1000)
         if len(torch.unique(pred)) == 1:
             pred = pred.add(torch.rand(len(pred))/1000)
-        # print("--- filtering --- \nReal and pred:")
-        # print(real,"\n", pred)
         return real, pred
 
